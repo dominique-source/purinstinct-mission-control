@@ -2,119 +2,154 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Globe2,
   Archive,
+  ChartNoAxesCombined,
+  Globe2,
+  LayoutDashboard,
+  Menu,
   Settings2,
-  ChevronRight,
-  ArrowUpRight,
-  Command,
-  Zap,
   Target,
+  Trophy,
 } from "lucide-react";
 import { useStudio } from "./provider";
-import { level, totalXp } from "@/lib/engine";
+import { AnimatedNumber } from "./animated-number";
+import { complete, globalProgress, level, locked, totalXp } from "@/lib/engine";
 export function Shell({ children }: { children: React.ReactNode }) {
-  const path = usePathname();
   const { state } = useStudio();
-  const lv = level(totalXp(state));
+  const path = usePathname();
+  const xp = totalXp(state);
+  const lv = level(xp);
+  const links = [
+    { href: "/", label: "Mission Control", icon: LayoutDashboard },
+    { href: "/world/vanier", label: "Les Worlds", icon: Globe2 },
+    { href: "/archive", label: "Missions terminées", icon: Archive },
+    { href: "/settings", label: "Paramètres", icon: Settings2 },
+  ];
+  const dates = `${new Date(state.settings.seasonStart + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short" })} → ${new Date(state.settings.seasonEnd + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" })}`;
   return (
-    <div className="app-shell">
+    <div
+      className={`campaign-app ${path === "/" ? "dashboard-route" : "detail-route"}`}
+    >
       <a className="skip" href="#main">
         Aller au contenu
       </a>
-      <aside className="sidebar">
-        <Link href="/" className="brand">
-          <span className="brand-mark">
-            P<span>ı</span>
-          </span>
-          <div>
-            PÜRINSTINCT<small>STUDIO</small>
-          </div>
+      <header className="command-header">
+        <Link
+          href="/"
+          className="command-brand"
+          aria-label="PürInstinct Studio — Mission Control"
+        >
+          <strong>
+            PÜR<span>INSTINCT</span>
+            <sup>®</sup>
+          </strong>
+          <small>STUDIO</small>
+          <em>MORE MOVEMENT. BRIGHTER FUTURES.</em>
         </Link>
-        <div className="workspace-label">VOTRE ESPACE DE COMMANDE</div>
-        <nav>
-          {[
-            { href: "/", icon: LayoutDashboard, label: "Mission Control" },
-            { href: "/world/vanier", icon: Globe2, label: "Les Worlds" },
-            { href: "/archive", icon: Archive, label: "Missions terminées" },
-            { href: "/settings", icon: Settings2, label: "Paramètres" },
-          ].map(({ href, icon: Icon, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={
-                (
-                  href === "/"
-                    ? path === "/"
-                    : path.startsWith(href.split("/").slice(0, 2).join("/"))
-                )
-                  ? "nav-link selected"
-                  : "nav-link"
-              }
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-              {href === "/" && <ChevronRight size={14} />}
-            </Link>
-          ))}
-        </nav>
-        <div className="sidebar-worlds">
-          <div className="workspace-label">
-            VOTRE CAMPAGNE{" "}
-            <span>{String(state.worlds.length).padStart(2, "0")}</span>
-          </div>
-          {state.worlds.map((w) => (
-            <Link href={`/world/${w.id}`} key={w.id}>
-              <i style={{ background: w.accent }} />
-              {w.title}
-              <span>{w.number}</span>
-            </Link>
-          ))}
+        <div className="command-season">
+          <Link href="/">MISSION CONTROL</Link>
+          <span>{state.settings.seasonTitle}</span>
+          <strong>{dates.toUpperCase()}</strong>
         </div>
-        <div className="side-bottom">
-          <div className="season-mini">
-            <Target size={20} />
+        <div className="command-stats">
+          <div className="hud-stat xp-stat">
+            <Trophy />
             <span>
-              UNE VISION.
-              <br />
-              <strong>UNE MISSION À LA FOIS.</strong>
+              <strong>
+                <AnimatedNumber value={xp} /> <b>XP</b>
+              </strong>
+              <small>/ {lv.next?.toLocaleString("fr-CA") || "MAX LEVEL"}</small>
+              <i className="hud-xp-track">
+                <i style={{ width: `${lv.percent}%` }} />
+              </i>
             </span>
           </div>
-          <Link href="/settings" className="user">
-            <div className="avatar">DS</div>
+          <div className="hud-stat">
+            <ChartNoAxesCombined />
             <span>
-              Dominique Soucy<small>Fondateur · PürInstinct</small>
+              <strong>{globalProgress(state)}%</strong>
+              <small>COMPLÉTÉ</small>
             </span>
-            <Settings2 size={16} />
-          </Link>
+          </div>
+          <div className="hud-stat">
+            <Target />
+            <span>
+              <strong>
+                {
+                  state.missions.filter(
+                    (m) => !m.archived && !complete(m) && !locked(m, state),
+                  ).length
+                }
+              </strong>
+              <small>MISSIONS ACTIVES</small>
+            </span>
+          </div>
         </div>
-      </aside>
-      <div className="main-wrap">
-        <header className="topbar">
-          <div>
-            <Command size={16} />
-            <span>STUDIO</span>
-            <ChevronRight size={13} />
-            <strong>MISSION CONTROL</strong>
-          </div>
-          <div>
-            <span className="online-dot" />
-            <span className="local-label">Sauvegarde locale</span>
-            <span className="level-pill">
-              <Zap size={13} /> LEVEL {lv.level}
-            </span>
-            <div className="avatar">DS</div>
-          </div>
-        </header>
-        <main id="main">{children}</main>
-        <footer>
-          <span>PÜRINSTINCT STUDIO © 2026</span>
+        <Link className="commander" href="/settings">
+          <span className="commander-avatar">DS</span>
           <span>
-            CHAQUE MISSION COMPTE. <ArrowUpRight size={12} />
+            DOMINIQUE<small>LEVEL {lv.level}</small>
           </span>
-        </footer>
-      </div>
+        </Link>
+        <details className="command-menu">
+          <summary aria-label="Ouvrir la navigation">
+            <Menu size={23} />
+          </summary>
+          <nav aria-label="Navigation principale">
+            {links.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={path === href ? "page" : undefined}
+              >
+                <Icon size={17} />
+                {label}
+              </Link>
+            ))}
+            <div className="menu-worlds">
+              {state.worlds.map((w) => (
+                <Link href={`/world/${w.id}`} key={w.id}>
+                  <span style={{ color: w.accent }}>{w.number}</span>
+                  {w.title}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </details>
+      </header>
+      <main id="main" className="command-main">
+        {children}
+      </main>
+      <footer className="command-footer">
+        <Link href="/" className="footer-brand">
+          PÜR<span>INSTINCT</span>
+        </Link>
+        <span className="footer-values">
+          VISION <i /> DISCIPLINE <i /> IMPACT <i /> COMMUNAUTÉ <i /> 15 AVRIL
+          2027
+        </span>
+        <span>PLUS DE MOUVEMENT. PLUS D’AVENIR.</span>
+      </footer>
+      <nav className="mobile-command-nav" aria-label="Navigation mobile">
+        {links.map(({ href, label, icon: Icon }) => (
+          <Link
+            href={href}
+            key={href}
+            className={
+              (
+                href === "/"
+                  ? path === "/"
+                  : path.startsWith(href.split("/").slice(0, 2).join("/"))
+              )
+                ? "selected"
+                : ""
+            }
+          >
+            <Icon size={20} />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }

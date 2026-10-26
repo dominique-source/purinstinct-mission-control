@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { State, Mission } from "@/types";
+import { AnimatedNumber } from "./animated-number";
 import { complete, locked } from "@/lib/engine";
 import {
   getSnapshot,
@@ -100,7 +101,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         >
           <span>✧ MISSION COMPLETE</span>
           <strong>{celebration.title}</strong>
-          <b>+ {celebration.xpReward} XP · BONUS MISSION</b>
+          <b>
+            + <AnimatedNumber value={celebration.xpReward} animateOnMount /> XP
+            · BONUS MISSION
+          </b>
           <button onClick={() => setCelebration(null)}>Continuer →</button>
         </div>
       )}

@@ -65,3 +65,7 @@ Mono-utilisateur, sauvegarde locale, pas de rappels push ni de synchronisation. 
 Lint, TypeScript, tests métier et build de production exécutés. Vérification navigateur sur serveur de production : fermeture V1 → déblocage V2 → fermeture V2 → déblocage V3 → ouverture du World Financement; création de World et mission; sélection du focus; persistance des notes et du focus après rafraîchissement; archivage. Vue iPhone 390 × 844 vérifiée sans débordement horizontal. Aucun avertissement ni erreur console sur le parcours de production. Les vérifications ont été isolées du navigateur de travail principal.
 
 L’événement navigateur `purinstinct:mission-complete` expose `missionId`, `xpReward` et `isBoss` pour brancher ultérieurement un son facultatif ou une intégration, sans coupler l’audio au moteur XP.
+
+## Refonte visuelle — référence `new app.png`
+
+La couche de présentation suit désormais le HUD horizontal, la scène sportive photographique, les cadres cyan/or et les tuiles illustrées de la référence approuvée. Le moteur, les données et les sauvegardes sont conservés. Voir [la documentation des visuels](docs/visual-assets.md) pour les assets, les prompts et les décisions de composition. Les illustrations CSS du prototype ont été remplacées sur le dashboard par des WebP locaux optimisés et Next Image.

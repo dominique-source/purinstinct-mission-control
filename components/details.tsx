@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
+import { CampaignArt } from "./campaign-art";
 import { Progress } from "./dashboard";
 import {
   complete,
@@ -56,6 +57,7 @@ export function WorldDetail({ id }: { id: string }) {
         className="detail-heading"
         style={{ "--accent": w.accent } as React.CSSProperties}
       >
+        <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
           WORLD {w.number} / {isLocked ? "LOCKED" : "UNLOCKED"}
         </div>
@@ -216,6 +218,7 @@ export function MissionDetail({ id }: { id: string }) {
         <ArrowLeft size={16} /> WORLD {w.number} / {w.title}
       </Link>
       <div className="detail-heading">
+        <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
           MISSION {m.id}{" "}
           <span className="tag">
@@ -675,6 +678,7 @@ export function FinalDetail() {
     <Shell>
       <Back />
       <div className="detail-heading final-heading">
+        <CampaignArt worldId="vanier" priority />
         <div className="eyebrow">
           <Trophy size={18} /> FINAL BOSS ·{" "}
           {new Date(state.settings.finalBossDate).toLocaleDateString("fr-CA", {

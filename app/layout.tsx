@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./campaign.css";
 import { StudioProvider } from "@/components/provider";
 export const metadata: Metadata = {
   title: "PÜRINSTINCT STUDIO — Mission Control",
