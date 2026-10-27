@@ -7,18 +7,28 @@ export const progress = (m: Mission) =>
         (m.tasks.filter((t) => t.completed).length / m.tasks.length) * 100,
       )
     : 0;
+/** Campaign relationships are recommendations, never permission gates. */
 export const worldLocked = (w: World, s: State) =>
-  !w.unlockConditions.every((id) =>
-    s.missions.some((m) => m.id === id && complete(m) && !m.archived),
-  );
+  !s.worlds.some((world) => world.id === w.id);
 export const locked = (m: Mission, s: State) =>
-  worldLocked(
-    s.worlds.find((w) => w.id === m.worldId)!,
-    s,
-  ) ||
-  !m.dependencies.every((id) =>
-    s.missions.some((p) => p.id === id && complete(p) && !p.archived),
+  !s.worlds.some((world) => world.id === m.worldId);
+export const recommendedAfter = (m: Mission, s: State) => [
+  ...new Set([
+    ...(s.worlds.find((w) => w.id === m.worldId)?.unlockConditions || []),
+    ...m.dependencies,
+  ]),
+];
+export const sequenceReady = (m: Mission, s: State) =>
+  recommendedAfter(m, s).every((id) =>
+    s.missions.some((p) => p.id === id && complete(p)),
   );
+export function missionStatus(m: Mission, s: State) {
+  if (m.archived) return "ARCHIVED";
+  if (complete(m)) return "COMPLETED";
+  if (m.workState === "waiting") return "WAITING";
+  if (m.workState === "paused") return "PAUSED";
+  return s.currentId === m.id ? "ACTIVE" : "AVAILABLE";
+}
 export const missionXp = (m: Mission) =>
   m.tasks.reduce((a, t) => a + (t.completed ? t.xp : 0), 0) +
   (complete(m) ? m.xpReward : 0);
@@ -48,9 +58,48 @@ export function weighted(ms: Mission[]) {
     : 0;
 }
 export const globalProgress = (s: State) =>
-  weighted(s.missions.filter((m) => !m.archived && !locked(m, s)));
-export const suggest = (s: State) =>
-  s.missions.find((m) => !m.archived && !complete(m) && !locked(m, s));
+  weighted(s.missions.filter((m) => !m.archived));
+export function suggest(s: State, excludeId?: string) {
+  const candidates = s.missions
+    .filter(
+      (m) =>
+        m.id !== excludeId &&
+        !m.archived &&
+        !complete(m) &&
+        m.tasks.some((t) => !t.completed) &&
+        !m.workState &&
+        !locked(m, s),
+    )
+    .sort(
+      (a, b) =>
+        (s.worlds.find((w) => w.id === a.worldId)?.order || 0) -
+          (s.worlds.find((w) => w.id === b.worldId)?.order || 0) ||
+        a.order - b.order,
+    );
+  const waiting = s.missions.find(
+    (m) => m.id === (excludeId || s.currentId) && m.workState,
+  );
+  return (
+    (waiting &&
+      candidates.find((m) => recommendedAfter(m, s).includes(waiting.id))) ||
+    candidates.find((m) => sequenceReady(m, s)) ||
+    candidates[0]
+  );
+}
+export function currentMission(s: State) {
+  return (
+    s.missions.find(
+      (m) => m.id === s.currentId && !m.archived && !complete(m),
+    ) ||
+    suggest(s) ||
+    s.missions.find((m) => !m.archived && !complete(m))
+  );
+}
+export function nextAction(m: Mission | undefined, s: State) {
+  const mission = m?.workState ? suggest(s, m.id) : m;
+  const task = mission?.tasks.find((t) => !t.completed);
+  return task && mission ? { mission, task } : undefined;
+}
 export function countdown(date: string, now: number) {
   const minutes = Math.max(
     0,

@@ -150,7 +150,7 @@ export function createSeed(): State {
           "Zéro frais aux familles confirmé",
         ],
         ["V2"],
-        "Obtenir un accord concret de Vanier et débloquer le financement.",
+        "Obtenir un accord concret de Vanier. Les recherches de financement peuvent avancer en parallèle.",
         true,
       ),
       m(

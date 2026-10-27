@@ -44,6 +44,11 @@ export function isState(value: unknown): value is State {
         !Number.isFinite(m.xpReward) ||
         m.xpReward < 0 ||
         !s.worlds.some((w) => w.id === m.worldId) ||
+        (m.workState !== undefined &&
+          m.workState !== "waiting" &&
+          m.workState !== "paused") ||
+        (m.waitingReason !== undefined &&
+          typeof m.waitingReason !== "string") ||
         !Array.isArray(m.dependencies) ||
         !Array.isArray(m.tasks) ||
         m.tasks.some(

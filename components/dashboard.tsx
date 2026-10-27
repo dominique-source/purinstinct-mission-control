@@ -29,10 +29,13 @@ import {
   countdown,
   globalProgress,
   level,
-  locked,
+  recommendedAfter,
+  sequenceReady,
+  missionStatus,
+  nextAction,
   progress,
   streak,
-  suggest,
+  currentMission,
   totalXp,
   weighted,
   worldLocked,
@@ -67,14 +70,8 @@ export function Dashboard() {
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, []);
-  const current =
-    state.missions.find(
-      (m) =>
-        m.id === state.currentId &&
-        !m.archived &&
-        !locked(m, state) &&
-        !complete(m),
-    ) || suggest(state);
+  const current = currentMission(state);
+  const action = nextAction(current, state);
   const currentWorld = state.worlds.find((w) => w.id === current?.worldId);
   const cd = countdown(
     state.settings.finalBossDate,
@@ -137,8 +134,9 @@ export function Dashboard() {
               <div className="mission-kicker">
                 <span className="live-dot" />
                 MISSION ACTUELLE
-                <span>
-                  {current?.id || "FIN"} / {current ? "EN COURS" : "COMPLETE"}
+                <span title={current?.waitingReason}>
+                  {current?.id || "FIN"} /{" "}
+                  {current ? missionStatus(current, state) : "COMPLETE"}
                 </span>
               </div>
               <div
@@ -160,8 +158,18 @@ export function Dashboard() {
                 <span>PROCHAINE ACTION :</span>
                 <CalendarDays size={16} />
                 <strong>
-                  {current?.tasks.find((t) => !t.completed)?.title ||
-                    "Choisir une nouvelle mission"}
+                  {action ? (
+                    <Link href={`/mission/${action.mission.id}`}>
+                      {action.mission.id !== current?.id
+                        ? `${action.mission.id} — `
+                        : ""}
+                      {action.task.title}
+                    </Link>
+                  ) : current?.workState ? (
+                    "Aucune autre action disponible. Reprendre une mission en attente ou en pause."
+                  ) : (
+                    "Choisir une nouvelle mission"
+                  )}
                 </strong>
               </div>
               <div className="current-mission-bottom">
@@ -259,12 +267,21 @@ export function Dashboard() {
                   </div>
                   {isLocked && <Lock size={15} className="tile-lock" />}
                 </div>
-                <span className="tile-status">
+                <span
+                  className="tile-status"
+                  title={
+                    w.unlockConditions.length
+                      ? `Séquence recommandée après ${w.unlockConditions.join(", ")}. Travail en parallèle possible.`
+                      : undefined
+                  }
+                >
                   {isLocked
                     ? "LOCKED"
                     : isCurrent
                       ? "MISSION ACTIVE"
-                      : "UNLOCKED"}
+                      : w.unlockConditions.length
+                        ? `AVAILABLE · APRÈS ${w.unlockConditions.join(", ")} CONSEILLÉ`
+                        : "AVAILABLE"}
                 </span>
                 <div className="tile-content">
                   <div className="tile-progress">
@@ -367,9 +384,11 @@ export function Dashboard() {
                     <small>
                       {complete(m)
                         ? "COMPLETE"
-                        : locked(m, state)
-                          ? `Après ${m.dependencies.join(", ") || "V3"}`
-                          : "DISPONIBLE"}
+                        : m.workState
+                          ? missionStatus(m, state)
+                          : !sequenceReady(m, state)
+                            ? `Conseillé après ${recommendedAfter(m, state).join(", ")}`
+                            : "DISPONIBLE"}
                     </small>
                   </Link>
                 </li>

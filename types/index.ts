@@ -14,6 +14,7 @@ export type Mission = {
   description: string;
   xpReward: number;
   tasks: Task[];
+  /** Recommended sequence only; never blocks tasks, XP or current mission. */
   dependencies: string[];
   notes: string;
   order: number;
@@ -21,6 +22,8 @@ export type Mission = {
   dueDate?: string;
   archived?: boolean;
   completedAt?: string;
+  workState?: "waiting" | "paused";
+  waitingReason?: string;
 };
 export type World = {
   id: string;
@@ -30,6 +33,7 @@ export type World = {
   description: string;
   accent: string;
   order: number;
+  /** Legacy field name retained for save compatibility: World sequence guidance. */
   unlockConditions: string[];
 };
 export type Settings = {

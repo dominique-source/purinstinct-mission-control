@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { State, Mission } from "@/types";
 import { AnimatedNumber } from "./animated-number";
-import { complete, locked } from "@/lib/engine";
+import { complete } from "@/lib/engine";
 import {
   getSnapshot,
   getServerSnapshot,
@@ -64,7 +64,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const toggleTask = (mid: string, tid: string) => {
     const latest = getSnapshot().state;
     const previous = latest.missions.find((m) => m.id === mid);
-    if (!previous || locked(previous, latest)) return;
+    if (!previous) return;
     patchMission(mid, {
       tasks: previous.tasks.map((t) =>
         t.id === tid

@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Lock,
   Zap,
   Plus,
   Trash2,
@@ -21,11 +20,11 @@ import { CampaignArt } from "./campaign-art";
 import { Progress } from "./dashboard";
 import {
   complete,
-  locked,
+  missionStatus,
+  nextAction,
   missionXp,
   progress,
   weighted,
-  worldLocked,
 } from "@/lib/engine";
 import type { Mission, World } from "@/types";
 import { finalItems, createSeed } from "@/data/seed";
@@ -49,7 +48,6 @@ export function WorldDetail({ id }: { id: string }) {
   const ms = state.missions
     .filter((m) => m.worldId === id && !m.archived)
     .sort((a, b) => a.order - b.order);
-  const isLocked = worldLocked(w, state);
   return (
     <Shell>
       <Back />
@@ -58,9 +56,7 @@ export function WorldDetail({ id }: { id: string }) {
         style={{ "--accent": w.accent } as React.CSSProperties}
       >
         <CampaignArt worldId={w.id} priority />
-        <div className="eyebrow">
-          WORLD {w.number} / {isLocked ? "LOCKED" : "UNLOCKED"}
-        </div>
+        <div className="eyebrow">WORLD {w.number} / AVAILABLE</div>
         <h1>
           {w.title}
           <span className="heading-dot">.</span>
@@ -81,10 +77,11 @@ export function WorldDetail({ id }: { id: string }) {
         </div>
         <Progress value={weighted(ms)} />
       </div>
-      {isLocked && (
+      {w.unlockConditions.length > 0 && (
         <div className="notice">
-          <Lock size={18} /> Terminez « Obtenir le thumbs up de Vanier » pour
-          débloquer ce World.<Link href="/mission/V3">Voir la mission →</Link>
+          <ArrowRight size={18} />
+          Recommandé après {w.unlockConditions.join(", ")} — vous pouvez avancer
+          en parallèle.
         </div>
       )}
       {id === "financement" && (
@@ -124,46 +121,45 @@ export function WorldDetail({ id }: { id: string }) {
         </section>
       )}
       <div className="section-heading">
-        <h2>VOTRE PARCOURS</h2>
+        <h2>PARCOURS RECOMMANDÉ</h2>
         <span>{ms.length} MISSIONS</span>
       </div>
       <div className="mission-map">
         {ms.map((m, i) => {
-          const isLocked = locked(m, state);
           return (
-            <Link
-              href={`/mission/${m.id}`}
-              className={`map-item ${isLocked ? "map-locked" : ""}`}
-              key={m.id}
-            >
+            <Link href={`/mission/${m.id}`} className="map-item" key={m.id}>
               <span
                 className={`map-node ${complete(m) ? "node-complete" : ""}`}
               >
                 {complete(m) ? (
                   <Check size={20} />
-                ) : isLocked ? (
-                  <Lock size={17} />
                 ) : (
                   String(i + 1).padStart(2, "0")
                 )}
               </span>
               <div>
                 <div className="eyebrow">
-                  {m.id} ·{" "}
-                  {complete(m)
-                    ? "COMPLETED"
-                    : isLocked
-                      ? "LOCKED"
-                      : state.currentId === m.id
-                        ? "ACTIVE"
-                        : "AVAILABLE"}{" "}
-                  {m.isBoss && " · BOSS"}
+                  {m.id} · {missionStatus(m, state)} {m.isBoss && " · BOSS"}
                 </div>
                 <h3>{m.title}</h3>
                 <p>
                   {m.tasks.filter((t) => t.completed).length}/{m.tasks.length}{" "}
                   actions · {m.xpReward} XP bonus
                 </p>
+                {m.workState && (
+                  <p>
+                    {m.waitingReason ||
+                      (m.workState === "waiting"
+                        ? "Réponse externe en attente"
+                        : "Mission en pause")}
+                  </p>
+                )}
+                {m.dependencies.length > 0 && (
+                  <p>
+                    Séquence recommandée après {m.dependencies.join(", ")} ·
+                    disponible en parallèle
+                  </p>
+                )}
                 <Progress value={progress(m)} />
               </div>
               <ArrowRight size={20} />
@@ -190,8 +186,7 @@ export function MissionDetail({ id }: { id: string }) {
       </Shell>
     );
   const w = state.worlds.find((w) => w.id === m.worldId)!;
-  const isLocked = locked(m, state);
-  const next = m.tasks.find((t) => !t.completed);
+  const action = nextAction(m, state);
   const dependents = state.missions.filter((other) =>
     other.dependencies.includes(id),
   );
@@ -220,18 +215,7 @@ export function MissionDetail({ id }: { id: string }) {
       <div className="detail-heading">
         <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
-          MISSION {m.id}{" "}
-          <span className="tag">
-            {m.archived
-              ? "ARCHIVED"
-              : complete(m)
-                ? "COMPLETED"
-                : isLocked
-                  ? "LOCKED"
-                  : state.currentId === id
-                    ? "CURRENT MISSION"
-                    : "AVAILABLE"}
-          </span>
+          MISSION {m.id} <span className="tag">{missionStatus(m, state)}</span>
         </div>
         <h1 className="mission-title">{m.title}</h1>
         <div className="detail-actions">
@@ -252,7 +236,7 @@ export function MissionDetail({ id }: { id: string }) {
           </span>
           <button
             className="button secondary"
-            disabled={isLocked || complete(m) || m.archived}
+            disabled={complete(m) || m.archived}
             onClick={() => update((s) => ({ ...s, currentId: id }))}
           >
             <Target size={16} />
@@ -273,10 +257,14 @@ export function MissionDetail({ id }: { id: string }) {
           <strong>{progress(m)}%</strong>
         </div>
       </div>
-      {isLocked && (
+      {m.workState && (
         <div className="notice">
-          <Lock size={18} /> Les prérequis doivent être terminés avant de
-          travailler sur cette mission.
+          <ArrowRight size={18} />
+          {m.workState === "waiting"
+            ? "WAITING — En attente"
+            : "PAUSED — En pause"}
+          {m.waitingReason ? ` : ${m.waitingReason}` : ""}. Les autres missions
+          restent disponibles.
         </div>
       )}
       {complete(m) && (
@@ -311,7 +299,6 @@ export function MissionDetail({ id }: { id: string }) {
                     <input
                       type="checkbox"
                       checked={t.completed}
-                      disabled={isLocked}
                       onChange={() => toggleTask(id, t.id)}
                     />
                     <span className="checkbox">
@@ -414,11 +401,57 @@ export function MissionDetail({ id }: { id: string }) {
         <aside className="detail-aside">
           <section className="panel next-panel">
             <div className="eyebrow">PROCHAINE ACTION</div>
-            <h3>{next?.title || "Mission terminée. Choisissez la suite."}</h3>
+            <h3>
+              {action
+                ? `${action.mission.id !== m.id ? `${action.mission.id} — ` : ""}${action.task.title}`
+                : m.workState
+                  ? "Reprendre une mission en attente ou en pause."
+                  : "Mission terminée. Choisissez la suite."}
+            </h3>
+            {action && action.mission.id !== m.id && (
+              <Link
+                className="button secondary"
+                href={`/mission/${action.mission.id}`}
+              >
+                Avancer sur {action.mission.id}
+                <ArrowRight size={16} />
+              </Link>
+            )}
             <p>Une action. Toute votre attention.</p>
+            <label>
+              État de travail
+              <select
+                value={m.workState || "available"}
+                onChange={(e) =>
+                  patchMission(id, {
+                    workState:
+                      e.target.value === "available"
+                        ? undefined
+                        : (e.target.value as "waiting" | "paused"),
+                  })
+                }
+              >
+                <option value="available">Disponible</option>
+                <option value="waiting">WAITING — En attente</option>
+                <option value="paused">PAUSED — En pause</option>
+              </select>
+            </label>
+            {m.workState && (
+              <label className="spaced">
+                Motif de l’attente ou de la pause
+                <input
+                  value={m.waitingReason || ""}
+                  placeholder="Réponse de Vanier, disponibilité…"
+                  onChange={(e) =>
+                    patchMission(id, { waitingReason: e.target.value })
+                  }
+                />
+              </label>
+            )}
           </section>
           <section className="panel">
-            <h3>PRÉREQUIS</h3>
+            <h3>SÉQUENCE RECOMMANDÉE</h3>
+            <p>Repères uniquement. Travail en parallèle possible.</p>
             {[...w.unlockConditions, ...m.dependencies].length ? (
               [...new Set([...w.unlockConditions, ...m.dependencies])].map(
                 (d) => (
@@ -426,8 +459,9 @@ export function MissionDetail({ id }: { id: string }) {
                     {state.missions.some((p) => p.id === d && complete(p)) ? (
                       <Check size={15} />
                     ) : (
-                      <Lock size={15} />
+                      <ArrowRight size={15} />
                     )}{" "}
+                    Après {d} —{" "}
                     {state.missions.find((p) => p.id === d)?.title || d}
                   </Link>
                 ),
@@ -435,7 +469,7 @@ export function MissionDetail({ id }: { id: string }) {
             ) : (
               <p>Aucun. Vous pouvez avancer.</p>
             )}
-            <h3 className="spaced">DÉBLOQUE</h3>
+            <h3 className="spaced">SUITE SUGGÉRÉE</h3>
             {dependents.map((d) => (
               <Link className="dependency" key={d.id} href={`/mission/${d.id}`}>
                 <ArrowRight size={14} />
@@ -544,7 +578,7 @@ function MissionFields({
         />
       </label>
       <label>
-        Dépendances
+        Séquence recommandée
         <select
           multiple
           value={m.dependencies}
@@ -581,17 +615,18 @@ function MissionFields({
               ? "archived"
               : complete(m)
                 ? "complete"
-                : state.currentId === m.id
-                  ? "active"
-                  : "available"
+                : m.workState ||
+                  (state.currentId === m.id ? "active" : "available")
           }
           onChange={(e) => {
             const status = e.target.value;
-            if (status === "archived") onChange({ archived: true });
+            if (status === "waiting" || status === "paused")
+              onChange({ workState: status, archived: false });
+            else if (status === "archived") onChange({ archived: true });
             else if (status === "complete") {
-              if (locked(m, state)) return;
               onChange({
                 archived: false,
+                workState: undefined,
                 tasks: m.tasks.map((t) => ({
                   ...t,
                   completed: true,
@@ -600,7 +635,10 @@ function MissionFields({
                 completedAt: m.completedAt || new Date().toISOString(),
               });
             } else if (status === "available")
+              onChange({ archived: false, workState: undefined });
+            else if (status === "reopen")
               onChange({
+                workState: undefined,
                 archived: false,
                 tasks: m.tasks.map((t) => ({
                   ...t,
@@ -611,14 +649,16 @@ function MissionFields({
               });
           }}
         >
-          <option value="available">Disponible / Réouvrir</option>
+          <option value="available">Disponible / Reprendre</option>
+          <option value="waiting">WAITING — En attente</option>
+          <option value="paused">PAUSED — En pause</option>
+          <option value="reopen">
+            Réouvrir et décocher toutes les actions
+          </option>
           <option value="active" disabled>
             Mission actuelle (bouton ci-dessus)
           </option>
-          <option
-            value="complete"
-            disabled={locked(m, state) || m.tasks.length === 0}
-          >
+          <option value="complete" disabled={m.tasks.length === 0}>
             Terminer toutes les actions
           </option>
           <option value="archived">Archivée</option>
@@ -1085,7 +1125,7 @@ function WorldFields({ world: w }: { world: World }) {
         />
       </label>
       <label>
-        Débloqué par
+        Recommandé après
         <select
           multiple
           value={w.unlockConditions}
