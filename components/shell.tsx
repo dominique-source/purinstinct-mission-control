@@ -25,7 +25,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/archive", label: "Missions terminées", icon: Archive },
     { href: "/settings", label: "Paramètres", icon: Settings2 },
   ];
-  const dates = `${new Date(state.settings.seasonStart + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short" })} → ${new Date(state.settings.seasonEnd + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" })}`;
+  const dates = `${new Date(state.settings.seasonStart + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "long" })} au ${new Date(state.settings.seasonEnd + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" })}`;
   return (
     <div
       className={`campaign-app ${path === "/" ? "dashboard-route" : "detail-route"}`}
@@ -37,18 +37,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link
           href="/"
           className="command-brand"
-          aria-label="PürInstinct Studio — Mission Control"
+          aria-label="PürInstinct — Mission Control"
         >
           <strong>
             PÜR<span>INSTINCT</span>
             <sup>®</sup>
           </strong>
-          <small>STUDIO</small>
-          <em>MORE MOVEMENT. BRIGHTER FUTURES.</em>
+          <em>Le sport à l’état pur.</em>
         </Link>
         <div className="command-season">
           <Link href="/">MISSION CONTROL</Link>
-          <span>{state.settings.seasonTitle}</span>
+          <span>{state.settings.seasonTitle.replace(/^SEASON 01 — /, "")}</span>
           <strong>{dates.toUpperCase()}</strong>
         </div>
         <div className="command-stats">
@@ -128,7 +127,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           VISION <i /> DISCIPLINE <i /> IMPACT <i /> COMMUNAUTÉ <i /> 15 AVRIL
           2027
         </span>
-        <span>PLUS DE MOUVEMENT. PLUS D’AVENIR.</span>
+        <span>Le sport à l’état pur.</span>
       </footer>
       <nav className="mobile-command-nav" aria-label="Navigation mobile">
         {links.map(({ href, label, icon: Icon }) => (

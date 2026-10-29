@@ -789,7 +789,7 @@ export function SettingsPage() {
     <Shell>
       <Back />
       <div className="detail-heading">
-        <div className="eyebrow">CONFIGURATION DU STUDIO</div>
+        <div className="eyebrow">CONFIGURATION PÜRINSTINCT</div>
         <h1>
           À VOTRE MESURE<span className="heading-dot">.</span>
         </h1>

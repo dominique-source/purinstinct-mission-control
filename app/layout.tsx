@@ -3,7 +3,7 @@ import "./globals.css";
 import "./campaign.css";
 import { StudioProvider } from "@/components/provider";
 export const metadata: Metadata = {
-  title: "PÜRINSTINCT STUDIO — Mission Control",
+  title: "PÜRINSTINCT — Mission Control",
   description:
     "Le système d’opération de Dominique. Cinq Worlds. Une vision. Chaque mission compte.",
 };

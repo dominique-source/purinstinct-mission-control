@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
   Check,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Flag,
   Flame,
   Layers,
@@ -25,6 +27,12 @@ import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt, worldArt } from "./campaign-art";
 import {
+  missionBrowser,
+  adjacentMission,
+  overviewMission,
+  activeMissions,
+} from "@/lib/mission-browser";
+import {
   complete,
   countdown,
   globalProgress,
@@ -35,9 +43,7 @@ import {
   nextAction,
   progress,
   streak,
-  currentMission,
   totalXp,
-  weighted,
   worldLocked,
 } from "@/lib/engine";
 export const worldIcons = [Flag, Radio, Layers, ScanLine, Handshake];
@@ -62,7 +68,24 @@ export function Progress({
   );
 }
 export function Dashboard() {
-  const { state, ready } = useStudio();
+  const { state, ready, update } = useStudio();
+  const heroRef = useRef<HTMLElement>(null);
+  const browser = missionBrowser(state);
+  const selectMission = (id: string, scroll = false) => {
+    if (!activeMissions(state).some((m) => m.id === id)) return;
+    update((s) => ({ ...s, currentId: id }));
+    if (scroll)
+      heroRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+        block: "center",
+      });
+  };
+  const moveMission = (delta: number) => {
+    const mission = adjacentMission(state, delta);
+    if (mission) selectMission(mission.id);
+  };
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -70,7 +93,7 @@ export function Dashboard() {
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, []);
-  const current = currentMission(state);
+  const current = browser.selected;
   const action = nextAction(current, state);
   const currentWorld = state.worlds.find((w) => w.id === current?.worldId);
   const cd = countdown(
@@ -90,7 +113,7 @@ export function Dashboard() {
       <div className="campaign-dashboard">
         <section
           className="campaign-stage"
-          aria-label="Votre mission prioritaire"
+          aria-label="Parcourir les missions actives"
         >
           <div className="stage-photo" aria-hidden="true">
             <Image
@@ -106,13 +129,17 @@ export function Dashboard() {
             <span>OPÉRATION : ÉCOLE FONDATRICE</span>
           </div>
           <div className="stage-slogan" aria-hidden="true">
-            PLUS DE
+            LE SPORT
             <br />
-            MOUVEMENT.
+            À L’ÉTAT
             <br />
-            <span>PLUS D’AVENIR.</span>
+            <span>PUR.</span>
           </div>
-          <section className="current-mission-frame">
+          <section
+            className="current-mission-frame"
+            ref={heroRef}
+            aria-label="Navigateur de missions actives"
+          >
             <CampaignArt
               worldId={currentWorld?.id || "vanier"}
               className="current-mission-photo"
@@ -133,58 +160,111 @@ export function Dashboard() {
             <div className="current-mission-content">
               <div className="mission-kicker">
                 <span className="live-dot" />
-                MISSION ACTUELLE
-                <span title={current?.waitingReason}>
-                  {current?.id || "FIN"} /{" "}
-                  {current ? missionStatus(current, state) : "COMPLETE"}
-                </span>
+                MISSIONS ACTIVES
+                <div className="mission-browser-controls">
+                  <button
+                    type="button"
+                    onClick={() => moveMission(-1)}
+                    disabled={browser.missions.length < 2}
+                    aria-label="Mission précédente"
+                  >
+                    <ChevronUp size={17} />
+                  </button>
+                  <label className="sr-only" htmlFor="mission-browser">
+                    Choisir une mission active
+                  </label>
+                  <select
+                    id="mission-browser"
+                    value={current?.id || ""}
+                    disabled={!browser.missions.length}
+                    onChange={(e) => selectMission(e.target.value)}
+                  >
+                    {!current && (
+                      <option value="">
+                        Toutes les missions sont terminées
+                      </option>
+                    )}
+                    {browser.missions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.id} ·{" "}
+                        {state.worlds.find((w) => w.id === m.worldId)?.title} —{" "}
+                        {m.title}
+                        {m.workState ? ` · ${missionStatus(m, state)}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    className="mission-browser-count"
+                    aria-label={`Mission ${current ? browser.index + 1 : 0} sur ${browser.missions.length}`}
+                  >
+                    {current ? browser.index + 1 : 0}/{browser.missions.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => moveMission(1)}
+                    disabled={browser.missions.length < 2}
+                    aria-label="Mission suivante"
+                  >
+                    <ChevronDown size={17} />
+                  </button>
+                </div>
               </div>
               <div
-                className={`current-mission-title ${(currentWorld?.title.length || 0) > 8 ? "long-world-title" : ""}`}
+                key={current?.id || "complete"}
+                className="mission-selection"
+                aria-live="polite"
+                aria-atomic="true"
               >
-                {currentWorld?.title || "SEASON COMPLETE"}
-              </div>
-              <h1>
-                {current?.id === "V1"
-                  ? "BÂTIR L’ÉCOLE FONDATRICE"
-                  : current?.title || "LA VISION PREND VIE."}
-                <ChevronRight size={20} />
-              </h1>
-              <div className="current-progress">
-                <Progress value={missionProgress} label="Mission actuelle" />
-                <strong>{missionProgress}%</strong>
-              </div>
-              <div className="current-next">
-                <span>PROCHAINE ACTION :</span>
-                <CalendarDays size={16} />
-                <strong>
-                  {action ? (
-                    <Link href={`/mission/${action.mission.id}`}>
-                      {action.mission.id !== current?.id
-                        ? `${action.mission.id} — `
-                        : ""}
-                      {action.task.title}
+                <div
+                  className={`current-mission-title ${(currentWorld?.title.length || 0) > 8 ? "long-world-title" : ""}`}
+                >
+                  {currentWorld?.title || "SEASON COMPLETE"}
+                </div>
+                <h1>
+                  {current?.title || "LA VISION PREND VIE."}
+                  <ChevronRight size={20} />
+                </h1>
+                <div className="current-progress">
+                  <Progress
+                    value={missionProgress}
+                    label={`Progression de la mission ${current?.id || "terminée"}`}
+                  />
+                  <strong data-mission-progress={current?.id}>
+                    {missionProgress}%
+                  </strong>
+                </div>
+                <div className="current-next">
+                  <span>PROCHAINE ACTION :</span>
+                  <CalendarDays size={16} />
+                  <strong>
+                    {action ? (
+                      <Link href={`/mission/${action.mission.id}`}>
+                        {action.mission.id !== current?.id
+                          ? `${action.mission.id} — `
+                          : ""}
+                        {action.task.title}
+                      </Link>
+                    ) : current?.workState ? (
+                      "Aucune autre action disponible. Reprendre une mission en attente ou en pause."
+                    ) : (
+                      "Choisir une nouvelle mission"
+                    )}
+                  </strong>
+                </div>
+                <div className="current-mission-bottom">
+                  <span>
+                    <Zap size={13} />
+                    {current?.xpReward || 0} XP · BONUS MISSION
+                  </span>
+                  {current && (
+                    <Link
+                      href={`/mission/${current.id}`}
+                      className="mission-launch"
+                    >
+                      OUVRIR LA MISSION <ArrowRight size={15} />
                     </Link>
-                  ) : current?.workState ? (
-                    "Aucune autre action disponible. Reprendre une mission en attente ou en pause."
-                  ) : (
-                    "Choisir une nouvelle mission"
                   )}
-                </strong>
-              </div>
-              <div className="current-mission-bottom">
-                <span>
-                  <Zap size={13} />
-                  {current?.xpReward || 0} XP · BONUS MISSION
-                </span>
-                {current && (
-                  <Link
-                    href={`/mission/${current.id}`}
-                    className="mission-launch"
-                  >
-                    OUVRIR LA MISSION <ArrowRight size={15} />
-                  </Link>
-                )}
+                </div>
               </div>
             </div>
           </section>
@@ -244,11 +324,15 @@ export function Dashboard() {
             const ms = state.missions
               .filter((m) => m.worldId === w.id && !m.archived)
               .sort((a, b) => a.order - b.order);
+            const displayed = overviewMission(state, w.id);
+            const preview =
+              displayed && !ms.slice(0, 4).some((m) => m.id === displayed.id)
+                ? [...ms.slice(0, 3), displayed]
+                : ms.slice(0, 4);
             const isLocked = worldLocked(w, state);
             const isCurrent = currentWorld?.id === w.id;
             return (
-              <Link
-                href={`/world/${w.id}`}
+              <article
                 className={`world-card campaign-tile ${isLocked ? "is-locked" : ""} ${isCurrent ? "current-world" : ""}`}
                 style={{ "--accent": w.accent } as React.CSSProperties}
                 key={w.id}
@@ -260,11 +344,15 @@ export function Dashboard() {
                     {w.number}
                     <small>/{state.worlds.length}</small>
                   </span>
-                  <div>
+                  <Link
+                    href={`/world/${w.id}`}
+                    className="tile-world-link"
+                    aria-label={`Ouvrir le World ${w.title}`}
+                  >
                     <span>WORLD {w.number}</span>
                     <h2>{w.title}</h2>
                     <p>{w.subtitle}</p>
-                  </div>
+                  </Link>
                   {isLocked && <Lock size={15} className="tile-lock" />}
                 </div>
                 <span
@@ -278,32 +366,61 @@ export function Dashboard() {
                   {isLocked
                     ? "LOCKED"
                     : isCurrent
-                      ? "MISSION ACTIVE"
+                      ? "MISSION AFFICHÉE"
                       : w.unlockConditions.length
                         ? `AVAILABLE · APRÈS ${w.unlockConditions.join(", ")} CONSEILLÉ`
                         : "AVAILABLE"}
                 </span>
                 <div className="tile-content">
-                  <div className="tile-progress">
-                    <strong>{weighted(ms)}%</strong>
+                  <button
+                    type="button"
+                    className="tile-progress mission-progress-select"
+                    onClick={() =>
+                      displayed && selectMission(displayed.id, true)
+                    }
+                    disabled={!displayed || complete(displayed)}
+                    aria-label={`Afficher ${displayed?.id || w.title} dans le grand encadré`}
+                  >
+                    <span className="tile-progress-value">
+                      <strong data-mission-progress={displayed?.id}>
+                        {displayed ? progress(displayed) : 0}%
+                      </strong>
+                      <small>
+                        {displayed
+                          ? `MISSION ${displayed.id}`
+                          : "AUCUNE MISSION"}
+                      </small>
+                    </span>
                     <Progress
-                      value={weighted(ms)}
-                      label={`Progression ${w.title}`}
+                      value={displayed ? progress(displayed) : 0}
+                      label={`Progression de la mission ${displayed?.id || w.title}`}
                     />
                     <ChevronRight size={23} />
-                  </div>
+                  </button>
                   <ul>
-                    {ms.slice(0, 4).map((m) => (
+                    {preview.map((m) => (
                       <li key={m.id}>
-                        <span
-                          className={`objective-marker ${complete(m) ? "objective-complete" : ""}`}
+                        <button
+                          type="button"
+                          className={`mission-preview ${current?.id === m.id ? "selected" : ""}`}
+                          disabled={complete(m)}
+                          onClick={() => selectMission(m.id, true)}
+                          aria-label={`Afficher ${m.id} — ${m.title} — ${progress(m)} %`}
+                          aria-pressed={current?.id === m.id}
                         >
-                          {complete(m) && <Check size={10} />}
-                        </span>
-                        <span>
-                          {m.title.charAt(0) +
-                            m.title.slice(1).toLocaleLowerCase("fr")}
-                        </span>
+                          <span
+                            className={`objective-marker ${complete(m) ? "objective-complete" : ""}`}
+                          >
+                            {complete(m) && <Check size={10} />}
+                          </span>
+                          <span className="mission-preview-title">
+                            {m.title.charAt(0) +
+                              m.title.slice(1).toLocaleLowerCase("fr")}
+                          </span>
+                          <strong data-mission-progress={m.id}>
+                            {progress(m)}%
+                          </strong>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -320,10 +437,20 @@ export function Dashboard() {
                         XP BONUS
                       </small>
                     </div>
-                    {isLocked ? <Lock size={21} /> : <Trophy size={20} />}
+                    <Link
+                      href={`/world/${w.id}`}
+                      aria-label={`Voir le parcours ${w.title}`}
+                      className="tile-world-open"
+                    >
+                      {isLocked ? (
+                        <Lock size={21} />
+                      ) : (
+                        <ArrowUpRight size={20} />
+                      )}
+                    </Link>
                   </div>
                 </div>
-              </Link>
+              </article>
             );
           })}
         </section>
@@ -402,34 +529,34 @@ export function Dashboard() {
               <strong>{globalProgress(state)}%</strong>
             </header>
             <div className="world-intelligence">
-              {state.worlds.map((w) => (
-                <Link
-                  href={`/world/${w.id}`}
-                  key={w.id}
-                  style={{ "--accent": w.accent } as React.CSSProperties}
-                >
-                  <span>
-                    {w.title.charAt(0) + w.title.slice(1).toLowerCase()}
-                  </span>
-                  <Progress
-                    value={weighted(
-                      state.missions.filter(
-                        (m) => m.worldId === w.id && !m.archived,
-                      ),
-                    )}
-                    label={`Progression ${w.title}`}
-                  />
-                  <strong>
-                    {weighted(
-                      state.missions.filter(
-                        (m) => m.worldId === w.id && !m.archived,
-                      ),
-                    )}
-                    %
-                  </strong>
-                  {worldLocked(w, state) && <Lock size={10} />}
-                </Link>
-              ))}
+              {state.worlds.map((w) => {
+                const displayed = overviewMission(state, w.id);
+                return (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      displayed && selectMission(displayed.id, true)
+                    }
+                    disabled={!displayed || complete(displayed)}
+                    aria-label={`Afficher ${displayed?.id || w.title} — ${displayed?.title || w.title}`}
+                    key={w.id}
+                    style={{ "--accent": w.accent } as React.CSSProperties}
+                  >
+                    <span>
+                      {displayed?.id} ·{" "}
+                      {w.title.charAt(0) + w.title.slice(1).toLowerCase()}
+                    </span>
+                    <Progress
+                      value={displayed ? progress(displayed) : 0}
+                      label={`Progression de la mission ${displayed?.id || w.title}`}
+                    />
+                    <strong data-mission-progress={displayed?.id}>
+                      {displayed ? progress(displayed) : 0}%
+                    </strong>
+                    {worldLocked(w, state) && <Lock size={10} />}
+                  </button>
+                );
+              })}
             </div>
             <div className="intelligence-quote">
               ON BÂTIT

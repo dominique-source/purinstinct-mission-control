@@ -1,4 +1,4 @@
-# PÜRINSTINCT STUDIO — MISSION CONTROL
+# PÜRINSTINCT — MISSION CONTROL
 
 Le système personnel de Dominique Soucy : cinq Worlds, 25 missions et une campagne de 30 jours, du 26 octobre au 24 novembre 2026. Une mission ouverte, une prochaine action précise, puis la suivante. La destination à long terme : les premiers PürInstinct Games scolaires à Vanier, le 15 avril 2027.
 
@@ -77,3 +77,9 @@ La couche de présentation suit désormais le HUD horizontal, la scène sportive
 ### Validation de la progression parallèle
 
 12 tests couvrent la disponibilité de toutes les missions, V1 à 75% avec V2 à 100%, les XP et leur retrait, le focus manuel, WAITING/PAUSED, Next Action vers une autre mission, le calcul World/global et le chargement réel d’un ancien payload localStorage sans écriture ni perte. Parcours navigateur sur origine de test isolée : V1 75% WAITING → Next Action V2 → sélection V2 → 100% → rafraîchissement → Vanier 24%, global 4%, total 1 350 XP. Une action F1 avant V3 ajoute bien 50 XP et les retire après décochage. Lint, TypeScript et build de production validés.
+
+### Navigation des missions sur la page principale
+
+Le bloc « Missions actives » permet de parcourir toutes les missions non archivées et non terminées (y compris WAITING/PAUSED), avec les flèches ou le sélecteur. Le champ existant `currentId` conserve uniquement la mission affichée, sans rendre les autres missions inactives. Les aperçus des tuiles et les lignes du tableau inférieur sélectionnent la même mission sans quitter la page. Les titres de Worlds et leurs liens de parcours continuent d’ouvrir les pages de détail.
+
+Les pourcentages de mission affichés dans le bloc principal, les aperçus et le tableau sont tous dérivés de `progress(mission)`. L’identifiant de mission est indiqué à côté de chaque valeur; la moyenne pondérée d’un World reste visible sur sa page de détail. Le total de campagne garde son calcul global distinct. Le branding affiché est PürInstinct, avec « Le sport à l’état pur. »; la période de 30 jours demeure éditable dans les paramètres et reste visible sur iPhone.

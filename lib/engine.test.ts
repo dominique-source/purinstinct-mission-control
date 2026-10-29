@@ -225,3 +225,57 @@ test("streak still counts distinct Toronto completion days", () => {
   assert.equal(streak(s, new Date("2026-10-26T17:00:00Z")), 2);
   assert.equal(streak(s, new Date("2026-10-29T17:00:00Z")), 0);
 });
+
+test("mission browser includes every active front and wraps previous/next without editing tasks", async () => {
+  const { activeMissions, missionBrowser, adjacentMission } =
+    await import("./mission-browser");
+  const s = createSeed();
+  s.missions[0].workState = "waiting";
+  s.missions[1].workState = "paused";
+  assert.equal(activeMissions(s).length, 25);
+  const before = JSON.stringify(s.missions);
+  s.currentId = "F7";
+  assert.equal(missionBrowser(s).selected?.id, "F7");
+  assert.equal(adjacentMission(s, 1)?.id, "V1");
+  s.currentId = "V1";
+  assert.equal(adjacentMission(s, -1)?.id, "F7");
+  assert.equal(JSON.stringify(s.missions), before);
+});
+test("hero and every overview read the selected mission progress, not its World average", async () => {
+  const { missionBrowser, overviewMission } = await import("./mission-browser");
+  const { s, v1, v2 } = parallelScenario();
+  s.currentId = "V1";
+  assert.equal(progress(missionBrowser(s).selected!), 75);
+  assert.equal(progress(overviewMission(s, "vanier")!), 75);
+  assert.equal(overviewMission(s, "vanier"), missionBrowser(s).selected);
+  s.currentId = "V2";
+  v2.tasks[0].completed = true;
+  assert.equal(overviewMission(s, "vanier"), v2);
+  assert.equal(
+    progress(missionBrowser(s).selected!),
+    progress(overviewMission(s, "vanier")!),
+  );
+  v2.tasks[1].completed = true;
+  assert.equal(progress(overviewMission(s, "vanier")!), 18);
+  assert.equal(progress(v1), 75);
+});
+test("browser handles completion, archive, custom missions, persisted selection and empty campaigns", async () => {
+  const { activeMissions, missionBrowser, adjacentMission } =
+    await import("./mission-browser");
+  const s = createSeed();
+  s.missions.push({ ...s.missions[0], id: "CUSTOM", order: 99 });
+  s.currentId = "CUSTOM";
+  assert.equal(
+    missionBrowser(JSON.parse(JSON.stringify(s))).selected?.id,
+    "CUSTOM",
+  );
+  s.missions.find((m) => m.id === "CUSTOM")!.archived = true;
+  assert.notEqual(missionBrowser(s).selected?.id, "CUSTOM");
+  s.missions.forEach((m) => m.tasks.forEach((t) => (t.completed = true)));
+  assert.equal(activeMissions(s).length, 0);
+  assert.equal(missionBrowser(s).selected, undefined);
+  assert.equal(adjacentMission(s, 1), undefined);
+  s.missions[0].tasks[0].completed = false;
+  assert.equal(missionBrowser(s).selected?.id, "V1");
+  assert.equal(adjacentMission(s, 1)?.id, "V1");
+});
