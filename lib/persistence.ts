@@ -35,6 +35,18 @@ export function isState(value: unknown): value is State {
       (w) =>
         !w ||
         !validLifecycle(w) ||
+        [
+          w.partners,
+          w.projectType,
+          w.startDate,
+          w.dueDate,
+          w.notes,
+          w.links,
+        ].some((v) => v !== undefined && typeof v !== "string") ||
+        (w.manualProgress !== undefined &&
+          (!Number.isFinite(w.manualProgress) ||
+            w.manualProgress < 0 ||
+            w.manualProgress > 100)) ||
         typeof w.id !== "string" ||
         typeof w.title !== "string" ||
         typeof w.subtitle !== "string" ||

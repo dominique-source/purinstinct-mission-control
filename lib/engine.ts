@@ -65,16 +65,30 @@ export function weighted(ms: Mission[]) {
     ? Math.round(ms.reduce((a, m) => a + progress(m) * m.xpReward, 0) / weight)
     : 0;
 }
-export const globalProgress = (s: State) =>
-  weighted(
-    s.missions
-      .filter((m) => !m.archived)
-      .map((m) =>
-        s.worlds.find((w) => w.id === m.worldId)?.status === "completed"
-          ? { ...m, status: "completed" }
-          : m,
+export const globalProgress = (s: State) => {
+  const worlds = s.worlds.map((w) => ({
+    value:
+      w.status === "completed"
+        ? 100
+        : (w.manualProgress ??
+          weighted(
+            s.missions.filter((m) => m.worldId === w.id && !m.archived),
+          )),
+    weight: Math.max(
+      1,
+      s.missions
+        .filter((m) => m.worldId === w.id && !m.archived)
+        .reduce((sum, m) => sum + m.xpReward, 0),
+    ),
+  }));
+  return Math.round(
+    worlds.reduce((sum, w) => sum + w.value * w.weight, 0) /
+      Math.max(
+        1,
+        worlds.reduce((sum, w) => sum + w.weight, 0),
       ),
   );
+};
 export function suggest(s: State, excludeId?: string) {
   const candidates = s.missions
     .filter(

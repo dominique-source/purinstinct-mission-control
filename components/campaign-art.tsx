@@ -21,7 +21,7 @@ export function CampaignArt({
   return (
     <div className={`campaign-art ${className}`} aria-hidden="true">
       <Image
-        src={worldArt[worldId]?.src || worldArt.vanier.src}
+        src={worldArt[worldId]?.src || "/images/campaign-backdrop.webp"}
         alt=""
         fill
         sizes="(max-width: 650px) 100vw, (max-width: 1000px) 50vw, 30vw"

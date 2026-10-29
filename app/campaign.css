@@ -2368,33 +2368,33 @@
   .tile-reward > svg {
     width: 17px;
   }
-  .campaign-app .campaign-tile.world-card:nth-child(5) {
+  .campaign-app .campaign-tile.world-card:last-child:nth-child(odd) {
     display: flex;
     grid-column: 1/-1;
     min-height: 260px;
     gap: 0;
     padding: 17px 18px 0;
   }
-  .campaign-tile:nth-child(5) .campaign-art {
+  .campaign-tile:last-child:nth-child(odd) .campaign-art {
     height: 100%;
     left: 32%;
   }
-  .campaign-tile:nth-child(5) .tile-shade {
+  .campaign-tile:last-child:nth-child(odd) .tile-shade {
     background:
       linear-gradient(90deg, #010a16eb 30%, #020b1277),
       linear-gradient(0deg, #020a12ff, transparent);
   }
-  .campaign-tile:nth-child(5) .tile-top h2 {
+  .campaign-tile:last-child:nth-child(odd) .tile-top h2 {
     font-size: 33px;
   }
-  .campaign-tile:nth-child(5) .tile-content {
+  .campaign-tile:last-child:nth-child(odd) .tile-content {
     padding-top: 20px;
   }
-  .campaign-app .campaign-tile.world-card:nth-child(5) ul {
+  .campaign-app .campaign-tile.world-card:last-child:nth-child(odd) ul {
     grid-template-columns: 1fr 1fr;
     gap: 10px 15px;
   }
-  .campaign-tile:nth-child(5) .tile-reward {
+  .campaign-tile:last-child:nth-child(odd) .tile-reward {
     background: none;
   }
   .tactical-grid {
@@ -3644,4 +3644,122 @@
 }
 .task-row .lifecycle-controls .button {
   font-size: 10px;
+}
+
+.project-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 20px;
+  position: relative;
+  z-index: 3;
+  order: -1;
+  background: #020d1c;
+}
+.new-project-dialog {
+  color: #e3eff7;
+  background: #071522;
+  border: 1px solid #6192b3;
+  border-radius: 12px;
+  width: min(680px, calc(100vw - 28px));
+  max-height: 90dvh;
+  padding: 24px;
+  overflow-y: auto;
+  margin: auto;
+}
+.new-project-dialog::backdrop {
+  background: #000b;
+  backdrop-filter: blur(4px);
+}
+.new-project-dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.new-project-dialog h2 {
+  margin: 5px 0;
+}
+.project-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.project-form-grid .wide {
+  grid-column: 1/-1;
+}
+.new-project-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.new-project-dialog label,
+.project-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+}
+.new-project-dialog input,
+.new-project-dialog textarea,
+.new-project-dialog select {
+  width: 100%;
+  min-height: 44px;
+  background: #142536;
+  color: #eef6fa;
+  border: 1px solid #456278;
+  border-radius: 5px;
+  padding: 10px;
+}
+.project-editor summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.project-editor a {
+  overflow-wrap: anywhere;
+}
+.project-editor h3 {
+  margin-top: 22px;
+}
+.project-card .tile-top h2 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .new-project-dialog {
+    padding: 18px;
+  }
+  .project-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .project-toolbar {
+    padding: 10px 14px;
+  }
+}
+.project-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 12px 0;
+  color: #bdd3e3;
+  font-size: 12px;
+}
+@media (min-width: 1001px) {
+  .campaign-worlds.world-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+}
+/* Keep long editable labels inside narrow cards as the collection grows. */
+.project-card .tile-content,
+.project-card li,
+.project-submission-link {
+  min-width: 0;
+}
+.project-card .tile-content {
+  width: 100%;
+}
+.project-card .tile-reward strong {
+  overflow-wrap: anywhere;
 }

@@ -428,3 +428,97 @@ test("all checked tasks never close a new mission automatically; legacy completi
   );
   assert.equal(reopened.history?.length, 2);
 });
+
+test("create a dynamic New Sport mission, edit content, and preserve lifecycle and legacy data", async () => {
+  const { createProject, addSubMission } = await import("./projects");
+  const { projectProgress, projectBrowser, projectObjective } =
+    await import("./project-navigation");
+  const { transition } = await import("./lifecycle");
+  const { isState } = await import("./persistence");
+  const before = createSeed();
+  const input = {
+    title: "New Sport",
+    objective: "Créer un nouveau sport et son format de tournoi télévisé.",
+    partners: "Éric Boucher",
+    projectType: "Développement",
+    startDate: "2026-10-29",
+    status: "active" as const,
+    initialProgress: 0,
+  };
+  let s = createProject(before, input, "new-sport");
+  assert.equal(s.worlds.length, 6);
+  assert.deepEqual(s.missions, before.missions);
+  assert.deepEqual(s.worlds.slice(0, 5), before.worlds);
+  assert.equal(projectBrowser(s).selected?.id, "new-sport");
+  let w = s.worlds[5];
+  assert.equal(w.subtitle, "Avec Éric Boucher");
+  assert.equal(projectObjective(w), input.objective);
+  assert.equal(projectProgress(w, s), 0);
+  s = addSubMission(
+    s,
+    w.id,
+    "Définir le format",
+    "sport-format",
+    "Préparer la rencontre",
+  );
+  assert.equal(s.missions.at(-1)?.tasks[0].title, "Préparer la rencontre");
+  const auto = { ...s.worlds[5], manualProgress: undefined };
+  const worked = {
+    ...s,
+    missions: s.missions.map((m) =>
+      m.id === "sport-format"
+        ? { ...m, tasks: m.tasks.map((t) => ({ ...t, completed: true })) }
+        : m,
+    ),
+  };
+  assert.equal(projectProgress(auto, worked), 100);
+  const initiallyClosed = createProject(
+    before,
+    { ...input, status: "completed" },
+    "closed-new",
+  );
+  assert.equal(
+    projectProgress(initiallyClosed.worlds[5], initiallyClosed),
+    100,
+  );
+  assert.notEqual(projectBrowser(initiallyClosed).selected?.id, "closed-new");
+  const initiallyCancelled = createProject(
+    before,
+    { ...input, status: "cancelled" },
+    "cancelled-new",
+  );
+  assert.equal(initiallyCancelled.worlds[5].status, "cancelled");
+  assert.equal(initiallyCancelled.worlds[5].history?.length, 1);
+  w = {
+    ...w,
+    manualProgress: 35,
+    notes: "Décision avec Éric",
+    links: "https://example.com/document",
+  };
+  s = { ...s, worlds: s.worlds.map((p) => (p.id === w.id ? w : p)) };
+  assert.equal(projectProgress(w, s), 35);
+  const restored = JSON.parse(JSON.stringify(s));
+  assert.equal(isState(restored), true);
+  assert.equal(restored.worlds[5].notes, w.notes);
+  assert.equal(restored.missions.at(-1).tasks.length, 1);
+  const closed = transition(w, "completed");
+  assert.equal(projectProgress(closed, s), 100);
+  assert.equal(projectProgress(transition(closed, "active"), s), 35);
+  restored.worlds[5].manualProgress = 150;
+  assert.equal(isState(restored), false);
+  assert.equal(
+    createProject(before, { ...input, title: " " }, "invalid"),
+    before,
+  );
+  assert.equal(
+    createProject(before, { ...input, dueDate: "2026-10-01" }, "invalid"),
+    before,
+  );
+  assert.equal(
+    createProject(before, { ...input, initialProgress: NaN }, "invalid"),
+    before,
+  );
+  assert.equal(createProject(s, input, "new-sport"), s);
+  const empty = addSubMission(s, w.id, "Sans tâches", "empty");
+  assert.equal(empty.missions.at(-1)?.tasks.length, 0);
+});

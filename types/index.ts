@@ -30,6 +30,13 @@ export type Mission = Lifecycle & {
   waitingReason?: string;
 };
 export type World = Lifecycle & {
+  partners?: string;
+  projectType?: string;
+  startDate?: string;
+  dueDate?: string;
+  manualProgress?: number;
+  notes?: string;
+  links?: string;
   objective?: string;
   id: string;
   number: string;

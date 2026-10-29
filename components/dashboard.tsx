@@ -25,12 +25,12 @@ import {
 } from "lucide-react";
 import { isClosed, missionLifecycle } from "@/lib/lifecycle";
 import { actionable } from "@/lib/engine";
+import { NewProject } from "./new-project";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt, worldArt } from "./campaign-art";
 import {
   projectBrowser,
-  adjacentProject,
   selectProject,
   subMissions,
   projectProgress,
@@ -75,10 +75,24 @@ export function Progress({
 export function Dashboard() {
   const { state, ready, update } = useStudio();
   const router = useRouter();
+  const [previewId, setPreviewId] = useState<string>();
   const heroRef = useRef<HTMLElement>(null);
-  const browser = projectBrowser(state);
+  const baseBrowser = projectBrowser(state);
+  const preview = state.worlds.find((w) => w.id === previewId);
+  const projects =
+    preview && isClosed(preview)
+      ? [...baseBrowser.projects, preview]
+      : baseBrowser.projects;
+  const selected = preview || baseBrowser.selected;
+  const browser = {
+    projects,
+    selected,
+    index: selected ? projects.findIndex((w) => w.id === selected.id) : 0,
+  };
   const selectMission = (id: string, reveal = false) => {
-    update((s) => selectProject(s, id));
+    setPreviewId(state.worlds.find((w) => w.id === id && isClosed(w))?.id);
+    if (!state.worlds.some((w) => w.id === id && isClosed(w)))
+      update((s) => selectProject(s, id));
     if (reveal)
       heroRef.current?.scrollIntoView({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -88,7 +102,11 @@ export function Dashboard() {
       });
   };
   const moveMission = (delta: number) => {
-    const project = adjacentProject(state, delta);
+    const project =
+      browser.projects[
+        (browser.index + delta + browser.projects.length) %
+          browser.projects.length
+      ];
     if (project) selectMission(project.id);
   };
   const [now, setNow] = useState<number | null>(null);
@@ -119,6 +137,7 @@ export function Dashboard() {
   return (
     <Shell>
       <div className="campaign-dashboard">
+        <NewProject onCreated={() => setPreviewId(undefined)} />
         <section
           className="campaign-stage"
           aria-label="Parcourir les missions actives"
@@ -168,7 +187,9 @@ export function Dashboard() {
             <div className="current-mission-content">
               <div className="mission-kicker">
                 <span className="live-dot" />
-                MISSIONS ACTIVES
+                {current && isClosed(current)
+                  ? "HISTORIQUE"
+                  : "MISSIONS ACTIVES"}
                 <div className="mission-browser-controls">
                   <button
                     type="button"
@@ -339,15 +360,17 @@ export function Dashboard() {
                 style={{ "--accent": w.accent } as React.CSSProperties}
                 data-project-card={w.id}
               >
-                <Link
-                  href={`/world/${w.id}`}
+                <button
+                  type="button"
+                  onClick={() => selectMission(w.id, true)}
                   className="project-card-open"
-                  aria-label={`Ouvrir la mission ${w.title}`}
+                  aria-label={`Afficher la mission ${w.title}`}
+                  aria-pressed={isCurrent}
                 >
                   <span className="sr-only">
-                    Ouvrir {w.title} — {value} %
+                    Afficher {w.title} — {value} %
                   </span>
-                </Link>
+                </button>
                 <CampaignArt worldId={w.id} />
                 <div className="tile-shade" />
                 <div className="tile-top">
@@ -358,11 +381,13 @@ export function Dashboard() {
                   <div>
                     <span>MISSION PRINCIPALE</span>
                     <h2>{w.title}</h2>
-                    <p>{w.subtitle}</p>
+                    <p>{w.partners ? `Avec ${w.partners}` : w.subtitle}</p>
                   </div>
                 </div>
                 <span className="tile-status">
-                  {isCurrent ? "MISSION ACTIVE" : projectStatus(w, state)}
+                  {isCurrent && !isClosed(w)
+                    ? "MISSION ACTIVE"
+                    : projectStatus(w, state)}
                 </span>
                 <div className="tile-content">
                   <div className="tile-progress">
@@ -377,7 +402,9 @@ export function Dashboard() {
                     <ChevronRight size={23} />
                   </div>
                   <div className="project-subtasks-label">
-                    SOUS-MISSIONS · OUVRIR LE DÉTAIL
+                    {ms.length
+                      ? "SOUS-MISSIONS · OUVRIR LE DÉTAIL"
+                      : "AJOUTEZ VOS SOUS-MISSIONS"}
                   </div>
                   <ul>
                     {ms.slice(0, 4).map((m) => (

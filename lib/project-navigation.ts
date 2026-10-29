@@ -19,7 +19,9 @@ export const subMissions = (state: State, worldId: string) =>
     .filter((m) => m.worldId === worldId && !m.archived)
     .sort((a, b) => a.order - b.order);
 export const projectProgress = (world: World, state: State) =>
-  world.status === "completed" ? 100 : weighted(subMissions(state, world.id));
+  world.status === "completed"
+    ? 100
+    : (world.manualProgress ?? weighted(subMissions(state, world.id)));
 export const projectObjective = (world: World) =>
   world.objective ||
   objectives[world.id] ||

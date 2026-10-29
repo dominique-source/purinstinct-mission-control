@@ -14,6 +14,7 @@ import {
   Trophy,
   Download,
 } from "lucide-react";
+import { ProjectEditor } from "./project-editor";
 import { LifecycleControls } from "./lifecycle-controls";
 import {
   isClosed,
@@ -79,7 +80,29 @@ export function WorldDetail({ id }: { id: string }) {
           <span className="heading-dot">.</span>
         </h1>
         <p>{projectObjective(w)}</p>
-        <div className="detail-description">{w.description}</div>
+        {w.description && w.description !== projectObjective(w) && (
+          <div className="detail-description">{w.description}</div>
+        )}
+        {(w.partners || w.projectType || w.startDate || w.dueDate) && (
+          <div className="project-metadata">
+            {w.partners && <span>Avec {w.partners}</span>}
+            {w.projectType && <span>{w.projectType}</span>}
+            {w.startDate && (
+              <span>
+                Début :{" "}
+                {new Date(w.startDate + "T12:00:00").toLocaleDateString(
+                  "fr-CA",
+                )}
+              </span>
+            )}
+            {w.dueDate && (
+              <span>
+                Échéance :{" "}
+                {new Date(w.dueDate + "T12:00:00").toLocaleDateString("fr-CA")}
+              </span>
+            )}
+          </div>
+        )}
         <div className="detail-stats">
           <strong>
             {projectProgress(w, state)}% <small>PROGRESSION</small>
@@ -110,6 +133,7 @@ export function WorldDetail({ id }: { id: string }) {
           le projet restent conservés.
         </p>
       </div>
+      <ProjectEditor world={w} />
       {w.unlockConditions.length > 0 && (
         <div className="notice">
           <ArrowRight size={18} />
@@ -176,7 +200,8 @@ export function WorldDetail({ id }: { id: string }) {
               </span>
               <div>
                 <div className="eyebrow">
-                  {m.id} · {missionStatus(m, state)} {m.isBoss && " · BOSS"}
+                  {m.id.includes("-") ? "PERSONNALISÉE" : m.id} ·{" "}
+                  {missionStatus(m, state)} {m.isBoss && " · BOSS"}
                 </div>
                 <h3>{m.title}</h3>
                 <p>
@@ -251,7 +276,7 @@ export function MissionDetail({ id }: { id: string }) {
       <div className="detail-heading">
         <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
-          SOUS-MISSION {m.id}{" "}
+          SOUS-MISSION {m.id.includes("-") ? "PERSONNALISÉE" : m.id}{" "}
           <span className="tag">{missionStatus(m, state)}</span>
         </div>
         <h1 className="mission-title">{m.title}</h1>
@@ -733,7 +758,8 @@ export function ArchivePage() {
         <div className="archive-row panel" key={m.id}>
           <Link href={`/mission/${m.id}`}>
             <span className="eyebrow">
-              {m.id} · {missionStatus(m, state)}
+              {m.id.includes("-") ? "PERSONNALISÉE" : m.id} ·{" "}
+              {missionStatus(m, state)}
             </span>
             <h3>{m.title}</h3>
             <span className="reward">{missionXp(m)} XP</span>
