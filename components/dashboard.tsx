@@ -330,17 +330,15 @@ export function Dashboard() {
                 style={{ "--accent": w.accent } as React.CSSProperties}
                 data-project-card={w.id}
               >
-                <button
-                  type="button"
-                  className="project-card-select"
-                  onClick={() => selectMission(w.id, true)}
-                  aria-label={`Activer la mission ${w.title}`}
-                  aria-pressed={isCurrent}
+                <Link
+                  href={`/world/${w.id}`}
+                  className="project-card-open"
+                  aria-label={`Ouvrir la mission ${w.title}`}
                 >
                   <span className="sr-only">
-                    Sélectionner {w.title} — {value} %
+                    Ouvrir {w.title} — {value} %
                   </span>
-                </button>
+                </Link>
                 <CampaignArt worldId={w.id} />
                 <div className="tile-shade" />
                 <div className="tile-top">

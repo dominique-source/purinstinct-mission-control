@@ -3417,7 +3417,7 @@
     animation: none;
   }
 }
-/* Primary card selection, entry, and child detail links are sibling actions. */
+/* Stretched mission entry and child links are siblings: no parent click handler. */
 .project-hero-status {
   display: block;
   margin-top: 7px;
@@ -3428,7 +3428,7 @@
 .campaign-app .project-card {
   cursor: pointer;
 }
-.project-card-select {
+.project-card-open {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -3440,7 +3440,7 @@
   color: inherit;
   cursor: pointer;
 }
-.project-card-select:focus-visible {
+.project-card-open:focus-visible {
   outline: 2px solid #8ae9ff !important;
   outline-offset: -6px !important;
 }
