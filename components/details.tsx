@@ -116,68 +116,7 @@ export function WorldDetail({ id }: { id: string }) {
           </strong>
         </div>
         <Progress value={projectProgress(w, state)} />
-        <LifecycleControls
-          item={w}
-          activeLabel={projectStatus(w)}
-          label={w.title}
-          onChange={(status) =>
-            update((s) => ({
-              ...s,
-              worlds: s.worlds.map((world) =>
-                world.id === id ? transitionProject(world, status) : world,
-              ),
-            }))
-          }
-        />
-        <p className="lifecycle-note">
-          La fermeture concerne cette mission uniquement. Les sous-missions et
-          le projet restent conservés.
-        </p>
       </div>
-      <ProjectEditor world={w} />
-      {w.unlockConditions.length > 0 && (
-        <div className="notice">
-          <ArrowRight size={18} />
-          Recommandé après {w.unlockConditions.join(", ")} — vous pouvez avancer
-          en parallèle.
-        </div>
-      )}
-      {id === "financement" && (
-        <section className="panel funding">
-          <div className="eyebrow">L’IMPACT SOCIAL COMME MOTEUR</div>
-          <h2>
-            {state.settings.funding.toLocaleString("fr-CA")} ${" "}
-            <small>/ 40 000 $</small>
-          </h2>
-          <Progress value={Math.min(100, state.settings.funding / 400)} />
-          <div className="funding-markers">
-            <span>15K · MINIMUM</span>
-            <span>20K · OPÉRATIONNEL</span>
-            <span>40K · PREMIUM</span>
-          </div>
-          <label>
-            Financement confirmé ($)
-            <input
-              type="number"
-              min="0"
-              value={state.settings.funding}
-              onChange={(e) =>
-                update((s) => ({
-                  ...s,
-                  settings: {
-                    ...s.settings,
-                    funding: Math.max(0, Number(e.target.value)),
-                  },
-                }))
-              }
-            />
-          </label>
-          <p>
-            Les jalons financiers sont validés manuellement après confirmation
-            réelle des fonds.
-          </p>
-        </section>
-      )}
       <div className="section-heading">
         <h2>SOUS-MISSIONS · PARCOURS RECOMMANDÉ</h2>
         <span>{ms.length} SOUS-MISSIONS</span>
@@ -230,6 +169,72 @@ export function WorldDetail({ id }: { id: string }) {
           );
         })}
       </div>
+      <ProjectEditor world={w} />
+      <section
+        className="panel"
+        aria-label="Fermeture et historique de la mission"
+      >
+        <LifecycleControls
+          item={w}
+          activeLabel={projectStatus(w)}
+          label={w.title}
+          onChange={(status) =>
+            update((s) => ({
+              ...s,
+              worlds: s.worlds.map((world) =>
+                world.id === id ? transitionProject(world, status) : world,
+              ),
+            }))
+          }
+        />
+        <p className="lifecycle-note">
+          La fermeture concerne cette mission uniquement. Les sous-missions et
+          le projet restent conservés.
+        </p>
+      </section>
+      {w.unlockConditions.length > 0 && (
+        <div className="notice">
+          <ArrowRight size={18} />
+          Recommandé après {w.unlockConditions.join(", ")} — vous pouvez avancer
+          en parallèle.
+        </div>
+      )}
+      {id === "financement" && (
+        <section className="panel funding">
+          <div className="eyebrow">L’IMPACT SOCIAL COMME MOTEUR</div>
+          <h2>
+            {state.settings.funding.toLocaleString("fr-CA")} ${" "}
+            <small>/ 40 000 $</small>
+          </h2>
+          <Progress value={Math.min(100, state.settings.funding / 400)} />
+          <div className="funding-markers">
+            <span>15K · MINIMUM</span>
+            <span>20K · OPÉRATIONNEL</span>
+            <span>40K · PREMIUM</span>
+          </div>
+          <label>
+            Financement confirmé ($)
+            <input
+              type="number"
+              min="0"
+              value={state.settings.funding}
+              onChange={(e) =>
+                update((s) => ({
+                  ...s,
+                  settings: {
+                    ...s.settings,
+                    funding: Math.max(0, Number(e.target.value)),
+                  },
+                }))
+              }
+            />
+          </label>
+          <p>
+            Les jalons financiers sont validés manuellement après confirmation
+            réelle des fonds.
+          </p>
+        </section>
+      )}
       <Link href={`/settings#world-${id}`} className="button secondary">
         <Settings2 size={16} /> Gérer ce World
       </Link>

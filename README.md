@@ -129,3 +129,9 @@ Validation : 22 tests; changements disponible → active → annulée → réact
 Le bas de chaque détail de sous-mission propose une action principale pleine largeur « Retour à [nom de la mission parente] », sous son message de statut. Après complétion, le message « Tâche complétée » précède ce bouton. La destination vient du parent enregistré (`worldId`), y compris pour les missions créées dans l’interface. La navigation du haut reste disponible et la logique de complétion, d’XP et d’historique est inchangée.
 
 Validation : lint, TypeScript et compilation; navigation réelle vers Vanier, Cliniques et une nouvelle mission New Sport Doc avec identifiant généré. Sur iPhone à 390 px, bouton de 328 × 60 px, sans débordement et accessible au clavier, après fermeture de l’animation de réussite. Les vérifications utilisent une origine locale isolée.
+
+### Contenu opérationnel en premier dans une mission
+
+Le détail d’une mission principale affiche maintenant, dans l’ordre : bloc principal (titre, objectif, statut global et progression), cartes des sous-missions / parcours recommandé, statut d’activité, formulaire d’ajout, puis modification, notes, liens, fermeture/historique et autres contrôles. Les recommandations de séquence et le bloc de financement restent présents plus bas. Cette réorganisation s’applique à toutes les missions, y compris celles créées depuis l’interface; aucun contenu ni comportement de sauvegarde ou de complétion n’est supprimé.
+
+Validation : lint, TypeScript et compilation; ordre DOM vérifié sur Cliniques, ouverture de la première action, ajout d’une sous-mission et conservation des notes après rafraîchissement; contrôle du financement toujours présent après les actions. Sur iPhone à 390 px, première action visible dans le premier écran et aucun débordement horizontal. Essais sur une origine locale isolée.

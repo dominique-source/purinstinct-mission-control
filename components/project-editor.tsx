@@ -43,6 +43,43 @@ export function ProjectEditor({ world: w }: { world: World }) {
           </select>
         </label>
       )}
+      <h3>Ajouter une sous-mission</h3>
+      <form
+        className="fields"
+        onSubmit={(e) => {
+          e.preventDefault();
+          update((s) =>
+            addSubMission(s, w.id, title, crypto.randomUUID(), task),
+          );
+          setTitle("");
+          setTask("");
+        }}
+      >
+        <label>
+          Nom de la sous-mission
+          <input
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Définir le format du tournoi"
+          />
+        </label>
+        <label>
+          Première tâche (optionnelle)
+          <input
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            placeholder="Préparer la rencontre avec Éric"
+          />
+        </label>
+        <button className="button secondary" disabled={!title.trim()}>
+          Ajouter la sous-mission
+        </button>
+      </form>
+      <p className="lifecycle-note">
+        Ouvrez une sous-mission pour ajouter ses tâches, modifier son objectif
+        et ses notes.
+      </p>
       <details>
         <summary>Modifier la mission</summary>
         <div className="fields project-form-grid">
@@ -162,43 +199,6 @@ export function ProjectEditor({ world: w }: { world: World }) {
             </li>
           ))}
       </ul>
-      <h3>Ajouter une sous-mission</h3>
-      <form
-        className="fields"
-        onSubmit={(e) => {
-          e.preventDefault();
-          update((s) =>
-            addSubMission(s, w.id, title, crypto.randomUUID(), task),
-          );
-          setTitle("");
-          setTask("");
-        }}
-      >
-        <label>
-          Nom de la sous-mission
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Définir le format du tournoi"
-          />
-        </label>
-        <label>
-          Première tâche (optionnelle)
-          <input
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-            placeholder="Préparer la rencontre avec Éric"
-          />
-        </label>
-        <button className="button secondary" disabled={!title.trim()}>
-          Ajouter la sous-mission
-        </button>
-      </form>
-      <p className="lifecycle-note">
-        Ouvrez une sous-mission pour ajouter ses tâches, modifier son objectif
-        et ses notes.
-      </p>
     </section>
   );
 }
