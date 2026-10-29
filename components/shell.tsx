@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useStudio } from "./provider";
 import { AnimatedNumber } from "./animated-number";
-import { isClosed } from "@/lib/lifecycle";
+import { projectGroups } from "@/lib/project-navigation";
 import { globalProgress, level, totalXp } from "@/lib/engine";
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state } = useStudio();
@@ -74,7 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="hud-stat">
             <Target />
             <span>
-              <strong>{state.worlds.filter((w) => !isClosed(w)).length}</strong>
+              <strong>{projectGroups(state).active.length}</strong>
               <small>MISSIONS ACTIVES</small>
             </span>
           </div>

@@ -5,7 +5,9 @@ export function LifecycleControls({
   item,
   label,
   onChange,
+  activeLabel,
 }: {
+  activeLabel?: string;
   item: Lifecycle;
   label: string;
   onChange: (status: LifecycleStatus) => void;
@@ -17,7 +19,9 @@ export function LifecycleControls({
       aria-label={`Statut : ${label}`}
     >
       <span className="lifecycle-badge">
-        {statusLabels[item.status || "active"]}
+        {!isClosed(item) && activeLabel
+          ? activeLabel
+          : statusLabels[item.status || "active"]}
       </span>
       {isClosed(item) ? (
         <button

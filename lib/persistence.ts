@@ -35,6 +35,9 @@ export function isState(value: unknown): value is State {
       (w) =>
         !w ||
         !validLifecycle(w) ||
+        (w.availability !== undefined &&
+          w.availability !== "available" &&
+          w.availability !== "waiting") ||
         [
           w.partners,
           w.projectType,

@@ -2368,35 +2368,6 @@
   .tile-reward > svg {
     width: 17px;
   }
-  .campaign-app .campaign-tile.world-card:last-child:nth-child(odd) {
-    display: flex;
-    grid-column: 1/-1;
-    min-height: 260px;
-    gap: 0;
-    padding: 17px 18px 0;
-  }
-  .campaign-tile:last-child:nth-child(odd) .campaign-art {
-    height: 100%;
-    left: 32%;
-  }
-  .campaign-tile:last-child:nth-child(odd) .tile-shade {
-    background:
-      linear-gradient(90deg, #010a16eb 30%, #020b1277),
-      linear-gradient(0deg, #020a12ff, transparent);
-  }
-  .campaign-tile:last-child:nth-child(odd) .tile-top h2 {
-    font-size: 33px;
-  }
-  .campaign-tile:last-child:nth-child(odd) .tile-content {
-    padding-top: 20px;
-  }
-  .campaign-app .campaign-tile.world-card:last-child:nth-child(odd) ul {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 15px;
-  }
-  .campaign-tile:last-child:nth-child(odd) .tile-reward {
-    background: none;
-  }
   .tactical-grid {
     display: contents;
   }
@@ -3762,4 +3733,173 @@
 }
 .project-card .tile-reward strong {
   overflow-wrap: anywhere;
+}
+
+/* One collection: current work first, historical records on a quieter second row. */
+.mission-collection {
+  position: relative;
+  z-index: 1;
+  order: 5;
+  min-width: 0;
+}
+.mission-collection-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 4px 10px;
+}
+.mission-collection-heading h2 {
+  font-family: var(--display);
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 1px;
+}
+.mission-priority-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 9px;
+  letter-spacing: 0.7px;
+  color: #9ab2c5;
+}
+.mission-priority-legend span:first-child {
+  color: #a4edff;
+  font-weight: 700;
+}
+.campaign-app .mission-live-row {
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.campaign-app .mission-live-row .project-active {
+  opacity: 1;
+  border-color: #57c6f0;
+  box-shadow:
+    0 0 12px #0088ce35,
+    inset 0 0 10px #0794da14;
+}
+.campaign-app .project-active .tile-top h2 {
+  font-size: 32px;
+}
+.campaign-app .project-active .tile-status {
+  background: #0c4264;
+  color: #d8faff;
+  border-color: #70d9ff;
+  font-weight: 700;
+}
+.campaign-app .mission-live-row .project-available,
+.campaign-app .mission-live-row .project-waiting {
+  opacity: 0.9;
+  border-color: #416780;
+  box-shadow: 0 0 6px #0088ce14;
+}
+.campaign-app .project-available .tile-top h2,
+.campaign-app .project-waiting .tile-top h2 {
+  font-size: 27px;
+  color: #c5d8e5;
+}
+.campaign-app .project-active .tile-content {
+  padding-top: 75px;
+}
+.campaign-app .project-available .tile-content,
+.campaign-app .project-waiting .tile-content {
+  padding-top: 55px;
+}
+.mission-archive-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #6a80912f;
+  margin: 20px 0 10px;
+  padding: 12px 4px 0;
+  font-size: 10px;
+  color: #8298aa;
+  letter-spacing: 1px;
+}
+.mission-archive-heading span {
+  color: #667f91;
+}
+.campaign-app .mission-archive-row {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 230px));
+  gap: 12px;
+}
+.campaign-app .mission-archive-row .project-archived {
+  min-height: 260px;
+  opacity: 0.62;
+  filter: saturate(0.15);
+  border: 1px solid #536575;
+  box-shadow: none;
+  padding: 12px 12px 0;
+}
+.campaign-app .mission-archive-row .project-archived:hover,
+.campaign-app .mission-archive-row .project-archived:focus-within {
+  opacity: 0.85;
+}
+.campaign-app .mission-archive-row .tile-top {
+  min-height: 52px;
+}
+.campaign-app .mission-archive-row .tile-top h2 {
+  font-size: 22px;
+}
+.campaign-app .mission-archive-row .tile-top p {
+  font-size: 9px;
+}
+.campaign-app .mission-archive-row .tile-content {
+  padding-top: 30px;
+}
+.campaign-app .mission-archive-row .tile-progress-value strong {
+  font-size: 22px;
+}
+.campaign-app .mission-archive-row .tile-content ul,
+.campaign-app .mission-archive-row .project-subtasks-label,
+.campaign-app .mission-archive-row .tile-reward {
+  display: none;
+}
+.campaign-app .mission-archive-row .project-enter {
+  min-height: 40px;
+  font-size: 10px;
+}
+.project-activity-field {
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+@media (max-width: 650px) {
+  .campaign-app .mission-live-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .campaign-app .mission-archive-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .campaign-app .mission-collection .campaign-tile.world-card {
+    grid-column: auto;
+  }
+  .campaign-app .mission-collection .campaign-art {
+    left: 0;
+  }
+  .campaign-app .mission-collection .campaign-tile ul {
+    grid-template-columns: 1fr;
+  }
+  .campaign-app .project-active .tile-top h2 {
+    font-size: 28px;
+  }
+  .campaign-app .project-available .tile-top h2,
+  .campaign-app .project-waiting .tile-top h2 {
+    font-size: 24px;
+  }
+  .campaign-app .mission-archive-row .project-archived {
+    min-height: 235px;
+  }
+  .campaign-app .mission-archive-row .tile-top h2 {
+    font-size: 21px;
+  }
+}
+
+.campaign-app .mission-live-row .project-active {
+  min-height: 510px;
+}
+@media (max-width: 650px) {
+  .campaign-app .mission-live-row .project-active {
+    min-height: 450px;
+  }
 }

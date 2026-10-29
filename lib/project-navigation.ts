@@ -6,7 +6,64 @@ import {
   sequenceReady,
   actionable,
 } from "./engine";
-import { isClosed, statusLabels, taskLifecycle } from "./lifecycle";
+import { createSeed } from "@/data/seed";
+import { isClosed, statusLabels, taskLifecycle, transition } from "./lifecycle";
+const initialAvailability = new Map(
+  createSeed().worlds.map((w) => [w.id, w.availability]),
+);
+/** Selection is a view preference; activity is stored independently. Legacy defaults are seed data. */
+export function projectActivity(world: World) {
+  return (
+    world.availability ??
+    (world.status === undefined
+      ? initialAvailability.get(world.id)
+      : undefined) ??
+    "active"
+  );
+}
+export function projectGroups(state: State) {
+  const ordered = [...state.worlds].sort(
+    (a, b) => a.order - b.order || a.id.localeCompare(b.id),
+  );
+  const active = ordered.filter(
+    (w) => !isClosed(w) && projectActivity(w) === "active",
+  );
+  const available = ordered.filter(
+    (w) => !isClosed(w) && projectActivity(w) !== "active",
+  );
+  const archived = ordered.filter(isClosed);
+  return { active, available, archived, live: [...active, ...available] };
+}
+export function changeProjectActivity(
+  state: State,
+  id: string,
+  activity: "active" | "available" | "waiting",
+): State {
+  const world = state.worlds.find((w) => w.id === id);
+  if (!world || isClosed(world)) return state;
+  return {
+    ...state,
+    worlds: state.worlds.map((w) =>
+      w.id === id
+        ? {
+            ...w,
+            status: "active",
+            availability: activity === "active" ? undefined : activity,
+          }
+        : w,
+    ),
+  };
+}
+/** Reactivation also restores active priority without changing child data. */
+export function transitionProject(
+  world: World,
+  status: "active" | "completed" | "cancelled",
+) {
+  return {
+    ...transition(world, status),
+    availability: status === "active" ? undefined : world.availability,
+  };
+}
 const objectives: Record<string, string> = {
   vanier: "BÂTIR L’ÉCOLE FONDATRICE",
   instinct: "SIGNER L’ENTENTE DE PRODUCTION",
@@ -28,9 +85,7 @@ export const projectObjective = (world: World) =>
   world.description ||
   world.subtitle;
 export function projectBrowser(state: State) {
-  const projects = state.worlds
-    .filter((w) => !isClosed(w))
-    .sort((a, b) => a.order - b.order);
+  const projects = projectGroups(state).live;
   const legacy = state.missions.find((m) => m.id === state.currentId)?.worldId;
   const selected =
     projects.find((w) => w.id === state.activeWorldId) ||
@@ -53,17 +108,14 @@ export function adjacentProject(state: State, delta: number) {
       ]
     : undefined;
 }
-export function projectStatus(world: World, state: State) {
-  const ms = subMissions(state, world.id);
+export function projectStatus(world: World) {
   if (isClosed(world)) return statusLabels[world.status!];
-  const remaining = ms.filter((m) => actionable(m, state));
-  if (remaining.length && remaining.every((m) => m.workState === "waiting"))
-    return "WAITING";
-  if (remaining.length && remaining.every((m) => m.workState === "paused"))
-    return "PAUSED";
-  return projectBrowser(state).selected?.id === world.id
+  const activity = projectActivity(world);
+  return activity === "active"
     ? "ACTIVE"
-    : "AVAILABLE";
+    : activity === "waiting"
+      ? "WAITING"
+      : "AVAILABLE";
 }
 export function projectNextAction(world: World, state: State) {
   if (isClosed(world)) return undefined;

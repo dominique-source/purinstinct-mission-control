@@ -320,9 +320,9 @@ test("primary progression changes only with actual work and parent data, never n
     .filter((m) => m.worldId === w.id)
     .forEach((m) => m.tasks.forEach((t) => (t.completed = true)));
   assert.equal(projectProgress(w, s), 100);
-  assert.equal(projectStatus(w, s), "ACTIVE");
+  assert.equal(projectStatus(w), "ACTIVE");
   w.status = "completed";
-  assert.equal(projectStatus(w, s), "COMPLÉTÉE");
+  assert.equal(projectStatus(w), "COMPLÉTÉE");
 });
 
 test("manual closure is independent of tasks, reversible, persistent and retains history", async () => {
@@ -392,7 +392,7 @@ test("closing Instinct archives only that mission and never closes or rewrites i
   s.activeWorldId = w.id;
   Object.assign(w, transition(w, "completed"));
   assert.equal(projectProgress(w, s), 100);
-  assert.equal(projectStatus(w, s), "COMPLÉTÉE");
+  assert.equal(projectStatus(w), "COMPLÉTÉE");
   assert.notEqual(projectBrowser(s).selected?.id, w.id);
   assert.equal(projectNextAction(w, s), undefined);
   assert.equal(JSON.stringify(s.missions), children);
@@ -521,4 +521,158 @@ test("create a dynamic New Sport mission, edit content, and preserve lifecycle a
   assert.equal(createProject(s, input, "new-sport"), s);
   const empty = addSubMission(s, w.id, "Sans tâches", "empty");
   assert.equal(empty.missions.at(-1)?.tasks.length, 0);
+});
+
+test("mission priority groups follow stored activity, never card selection or mission names", async () => {
+  const {
+    projectGroups,
+    projectStatus,
+    selectProject,
+    changeProjectActivity,
+    transitionProject,
+  } = await import("./project-navigation");
+  const { isState } = await import("./persistence");
+  let s = createSeed();
+  s.worlds = [
+    {
+      ...s.worlds[0],
+      id: "arbitrary-ready",
+      title: "AAA ready",
+      order: 1,
+      status: "active",
+      availability: "available",
+    },
+    {
+      ...s.worlds[1],
+      id: "arbitrary-closed",
+      title: "BBB closed",
+      order: 2,
+      status: "completed",
+    },
+    {
+      ...s.worlds[2],
+      id: "arbitrary-active",
+      title: "ZZZ active",
+      order: 3,
+      status: "active",
+    },
+    {
+      ...s.worlds[3],
+      id: "arbitrary-waiting",
+      title: "CCC waiting",
+      order: 4,
+      status: "active",
+      availability: "waiting",
+    },
+    {
+      ...s.worlds[4],
+      id: "arbitrary-cancelled",
+      title: "DDD cancelled",
+      order: 5,
+      status: "cancelled",
+    },
+  ];
+  const before = JSON.stringify(s);
+  const g = projectGroups(s);
+  assert.deepEqual(
+    g.live.map((w) => w.id),
+    ["arbitrary-active", "arbitrary-ready", "arbitrary-waiting"],
+  );
+  assert.deepEqual(
+    g.archived.map((w) => w.id),
+    ["arbitrary-closed", "arbitrary-cancelled"],
+  );
+  assert.equal(JSON.stringify(s), before);
+  const selected = selectProject(s, "arbitrary-ready");
+  assert.equal(projectStatus(selected.worlds[0]), "AVAILABLE");
+  assert.deepEqual(projectGroups(selected), g);
+  s = changeProjectActivity(s, "arbitrary-ready", "active");
+  assert.deepEqual(
+    projectGroups(s).active.map((w) => w.id),
+    ["arbitrary-ready", "arbitrary-active"],
+  );
+  const childData = JSON.stringify(s.missions);
+  s = {
+    ...s,
+    worlds: s.worlds.map((w) =>
+      w.id === "arbitrary-active" ? transitionProject(w, "completed") : w,
+    ),
+  };
+  assert.equal(
+    projectGroups(s).archived.some((w) => w.id === "arbitrary-active"),
+    true,
+  );
+  s = {
+    ...s,
+    worlds: s.worlds.map((w) =>
+      w.id === "arbitrary-closed" ? transitionProject(w, "active") : w,
+    ),
+  };
+  assert.equal(
+    projectGroups(s).active.some((w) => w.id === "arbitrary-closed"),
+    true,
+  );
+  assert.equal(JSON.stringify(s.missions), childData);
+  const restored = JSON.parse(JSON.stringify(s));
+  assert.deepEqual(
+    projectGroups(restored),
+    JSON.parse(JSON.stringify(projectGroups(s))),
+  );
+  assert.equal(changeProjectActivity(s, "arbitrary-cancelled", "active"), s);
+  const valid = createSeed();
+  valid.worlds[0].availability = "waiting";
+  assert.equal(isState(JSON.parse(JSON.stringify(valid))), true);
+  assert.equal(
+    isState({
+      ...valid,
+      worlds: valid.worlds.map((w) => ({ ...w, availability: "bad" })),
+    }),
+    false,
+  );
+});
+
+test("legacy activity defaults preserve saves and reactivation restores active priority", async () => {
+  const { projectGroups, projectActivity, transitionProject } =
+    await import("./project-navigation");
+  const { createProject } = await import("./projects");
+  const s = createSeed();
+  s.worlds = s.worlds.map(({ availability: _availability, ...w }) => {
+    void _availability;
+    return w;
+  });
+  const before = JSON.stringify(s);
+  assert.deepEqual(
+    projectGroups(s).active.map((w) => w.id),
+    ["vanier", "cliniques"],
+  );
+  assert.equal(JSON.stringify(s), before);
+  const ready = s.worlds.find((w) => w.id === "technologie")!;
+  assert.equal(projectActivity(ready), "available");
+  const reopened = transitionProject(
+    transitionProject(ready, "cancelled"),
+    "active",
+  );
+  assert.equal(projectActivity(reopened), "active");
+  assert.equal(reopened.history?.length, 2);
+  const added = createProject(
+    s,
+    {
+      title: "Another name",
+      objective: "Objectif",
+      partners: "",
+      projectType: "Autre",
+      startDate: "2026-10-29",
+      status: "active",
+      availability: "available",
+      initialProgress: 0,
+    },
+    "unknown-id",
+  );
+  assert.equal(
+    projectGroups(added).available.some((w) => w.id === "unknown-id"),
+    true,
+  );
+  added.worlds = added.worlds.map((w) => transitionProject(w, "completed"));
+  assert.equal(projectGroups(added).live.length, 0);
+  assert.equal(projectGroups(added).archived.length, 6);
 });

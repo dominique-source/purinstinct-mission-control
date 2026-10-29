@@ -17,6 +17,7 @@ export type ProjectInput = {
   startDate: string;
   dueDate?: string;
   status: LifecycleStatus;
+  availability?: World["availability"];
   initialProgress: number;
 };
 export const todayToronto = () =>
@@ -34,6 +35,9 @@ export function createProject(
     input.initialProgress < 0 ||
     input.initialProgress > 100 ||
     !["active", "completed", "cancelled"].includes(input.status) ||
+    (input.availability !== undefined &&
+      input.availability !== "available" &&
+      input.availability !== "waiting") ||
     !projectTypes.includes(
       input.projectType as (typeof projectTypes)[number],
     ) ||
@@ -46,6 +50,7 @@ export function createProject(
     {
       id,
       status: "active",
+      availability: input.availability,
       number: String(state.worlds.length + 1).padStart(2, "0"),
       title: input.title.trim(),
       objective: input.objective.trim(),
@@ -69,7 +74,10 @@ export function createProject(
   return {
     ...state,
     worlds: [...state.worlds, world],
-    activeWorldId: input.status === "active" ? id : state.activeWorldId,
+    activeWorldId:
+      input.status === "active" && !input.availability
+        ? id
+        : state.activeWorldId,
   };
 }
 export function validDate(value: string) {

@@ -79,7 +79,16 @@ export function NewProject({ onCreated }: { onCreated?: () => void }) {
                   projectType: String(data.get("projectType")),
                   startDate: String(data.get("startDate")),
                   dueDate: String(data.get("dueDate")),
-                  status: data.get("status") as LifecycleStatus,
+                  status: ["available", "waiting"].includes(
+                    String(data.get("status")),
+                  )
+                    ? "active"
+                    : (data.get("status") as LifecycleStatus),
+                  availability: ["available", "waiting"].includes(
+                    String(data.get("status")),
+                  )
+                    ? (data.get("status") as "available" | "waiting")
+                    : undefined,
                   initialProgress: Number(data.get("progress")),
                 },
                 crypto.randomUUID(),
@@ -145,6 +154,8 @@ export function NewProject({ onCreated }: { onCreated?: () => void }) {
               Statut initial
               <select name="status" defaultValue="active">
                 <option value="active">Active</option>
+                <option value="available">Available — Prête à démarrer</option>
+                <option value="waiting">En attente</option>
                 <option value="completed">Complétée</option>
                 <option value="cancelled">Annulée</option>
               </select>

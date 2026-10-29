@@ -113,3 +113,13 @@ Le détail permet de modifier nom, objectif, partenaires, type, dates et progres
 Les champs sont optionnels dans le schéma v1 pour garder les anciennes sauvegardes compatibles. Les créations et modifications persistent dans le navigateur et dans les exports/imports existants. Les liens affichés acceptent uniquement HTTP(S).
 
 Validation : 20 tests (création, statuts initiaux, progression, sérialisation et préservation des données), lint, TypeScript et compilation; parcours navigateur New Sport / Éric Boucher, ajout d’une sous-mission et de deux tâches, notes, lien de document, progression à 25 %, rafraîchissement, sélection de carte sans navigation, Entrer vers le détail et contrôle iPhone à 390 px sans débordement. Les essais utilisent une origine locale distincte.
+
+### Priorité visuelle par statut
+
+Une seule section Missions contient une rangée de travail (actives d’abord, puis disponibles/en attente) et une rangée historique distincte pour les complétées/annulées. Les archives sont compactes, désaturées et toujours consultables; les actives ont des titres et un contraste plus forts. La collection s’adapte sur mobile sans imposer quatre tableaux.
+
+La sélection du grand encadré (`activeWorldId`) reste une préférence d’affichage. Elle ne définit plus le statut ACTIVE. Les missions ouvertes stockent une activité indépendante : active par défaut, ou `availability: available / waiting`. Ce choix est accessible dans leur détail et à la création. Le compteur de missions actives et les badges utilisent cette même donnée. Réactiver remet explicitement la mission dans la priorité active sans modifier ses enfants ni effacer l’historique.
+
+Le tri est pur : `projectGroups` utilise l’activité et les statuts de fermeture, puis l’ordre enregistré. Aucune règle de placement ne cible un titre ou un identifiant particulier. Les anciens enregistrements sans statut explicite utilisent les valeurs de départ de leur jeu de données pour les disponibilités; les statuts manuels existants restent prioritaires. Les données de départ placent Vanier et Cliniques en cours, et les autres trajectoires initiales en disponibilité tant qu’elles n’ont pas reçu un état explicite. Les créations existantes actives, dont New Sport Doc, restent actives. Une mission déjà complétée ou annulée conserve son état.
+
+Validation : 22 tests; changements disponible → active → annulée → réactivée, tri inchangé par une simple sélection, sauvegarde/restauration et états sans missions ouvertes. Vérification navigateur avec trois actives, deux disponibles et Instinct complétée; contrôle iPhone à 390 px sans débordement, archives bien placées sous la rangée de travail, liens et commandes distincts. Les données de démonstration utilisent une origine locale isolée.

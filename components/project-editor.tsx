@@ -3,7 +3,12 @@ import { useState } from "react";
 import type { World } from "@/types";
 import { useStudio } from "./provider";
 import { addSubMission, projectTypes } from "@/lib/projects";
-import { projectObjective } from "@/lib/project-navigation";
+import { isClosed } from "@/lib/lifecycle";
+import {
+  projectActivity,
+  changeProjectActivity,
+  projectObjective,
+} from "@/lib/project-navigation";
 export function ProjectEditor({ world: w }: { world: World }) {
   const { update } = useStudio();
   const [title, setTitle] = useState("");
@@ -17,6 +22,27 @@ export function ProjectEditor({ world: w }: { world: World }) {
     }));
   return (
     <section className="panel project-editor">
+      {!isClosed(w) && (
+        <label className="project-activity-field">
+          Statut d’activité
+          <select
+            value={projectActivity(w)}
+            onChange={(e) =>
+              update((s) =>
+                changeProjectActivity(
+                  s,
+                  w.id,
+                  e.target.value as "active" | "available" | "waiting",
+                ),
+              )
+            }
+          >
+            <option value="active">ACTIVE — En cours</option>
+            <option value="available">AVAILABLE — Prête à démarrer</option>
+            <option value="waiting">En attente</option>
+          </select>
+        </label>
+      )}
       <details>
         <summary>Modifier la mission</summary>
         <div className="fields project-form-grid">

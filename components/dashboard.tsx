@@ -25,12 +25,15 @@ import {
 } from "lucide-react";
 import { isClosed, missionLifecycle } from "@/lib/lifecycle";
 import { actionable } from "@/lib/engine";
+import type { World } from "@/types";
 import { NewProject } from "./new-project";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt, worldArt } from "./campaign-art";
 import {
   projectBrowser,
+  projectGroups,
+  projectActivity,
   selectProject,
   subMissions,
   projectProgress,
@@ -134,6 +137,106 @@ export function Dashboard() {
   const tomorrow = state.missions.find((m) => m.id === "I1");
   const todayParent = state.worlds.find((w) => w.id === today?.worldId);
   const tomorrowParent = state.worlds.find((w) => w.id === tomorrow?.worldId);
+  const groups = projectGroups(state);
+  const renderProjectCard = (w: World) => {
+    const ms = subMissions(state, w.id);
+    const value = projectProgress(w, state);
+    const isCurrent = current?.id === w.id;
+    return (
+      <article
+        key={w.id}
+        className={`world-card campaign-tile project-card project-${isClosed(w) ? "archived" : projectActivity(w)} ${isClosed(w) ? "lifecycle-closed" : ""} ${isCurrent ? "current-world" : ""}`}
+        style={{ "--accent": w.accent } as React.CSSProperties}
+        data-project-card={w.id}
+        data-project-activity={isClosed(w) ? w.status : projectActivity(w)}
+      >
+        <button
+          type="button"
+          onClick={() => selectMission(w.id, true)}
+          className="project-card-open"
+          aria-label={`Afficher la mission ${w.title}`}
+          aria-pressed={isCurrent}
+        >
+          <span className="sr-only">
+            Afficher {w.title} — {value} %
+          </span>
+        </button>
+        <CampaignArt worldId={w.id} />
+        <div className="tile-shade" />
+        <div className="tile-top">
+          <span className="world-badge">
+            {w.number}
+            <small>/{state.worlds.length}</small>
+          </span>
+          <div>
+            <span>MISSION PRINCIPALE</span>
+            <h2>{w.title}</h2>
+            <p>{w.partners ? `Avec ${w.partners}` : w.subtitle}</p>
+          </div>
+        </div>
+        <span className="tile-status">{projectStatus(w)}</span>
+        <div className="tile-content">
+          <div className="tile-progress">
+            <span className="tile-progress-value">
+              <strong data-project-progress={w.id}>{value}%</strong>
+              <small>PROGRESSION GLOBALE</small>
+            </span>
+            <Progress value={value} label={`Progression globale ${w.title}`} />
+            <ChevronRight size={23} />
+          </div>
+          <div className="project-subtasks-label">
+            {ms.length
+              ? "SOUS-MISSIONS · OUVRIR LE DÉTAIL"
+              : "AJOUTEZ VOS SOUS-MISSIONS"}
+          </div>
+          <ul>
+            {ms.slice(0, 4).map((m) => (
+              <li key={m.id}>
+                <Link
+                  href={`/mission/${m.id}`}
+                  className={`project-submission-link ${missionLifecycle(m) !== "active" ? "lifecycle-closed" : ""}`}
+                  aria-label={`Ouvrir la sous-mission ${m.id} — ${m.title}`}
+                >
+                  <span
+                    className={`objective-marker ${complete(m) ? "objective-complete" : ""}`}
+                  >
+                    {complete(m) && <Check size={10} />}
+                  </span>
+                  <span className="mission-preview-title">
+                    {m.title.charAt(0) +
+                      m.title.slice(1).toLocaleLowerCase("fr")}
+                  </span>
+                  <strong>
+                    {missionLifecycle(m) === "cancelled"
+                      ? "ANNULÉE"
+                      : missionLifecycle(m) === "completed"
+                        ? "COMPLÉTÉE · 100%"
+                        : `${progress(m)}%`}
+                  </strong>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="tile-reward">
+            <div>
+              <span>RÉCOMPENSE</span>
+              <strong>{worldArt[w.id]?.reward || "NOUVEAU NIVEAU"}</strong>
+              <small>
+                {projectReward(w, state).toLocaleString("fr-CA")} XP BONUS
+              </small>
+            </div>
+          </div>
+          <Link
+            href={`/world/${w.id}`}
+            className="project-enter button secondary"
+            aria-label={`Entrer dans la mission ${w.title}`}
+          >
+            ENTRER <ArrowRight size={17} />
+          </Link>
+        </div>
+      </article>
+    );
+  };
   return (
     <Shell>
       <div className="campaign-dashboard">
@@ -251,8 +354,8 @@ export function Dashboard() {
                   <ChevronRight size={20} />
                 </h1>
                 <span className="project-hero-status" data-project-status>
-                  {current ? projectStatus(current, state) : "AVAILABLE"} ·
-                  MISSION PRINCIPALE
+                  {current ? projectStatus(current) : "AVAILABLE"} · MISSION
+                  PRINCIPALE
                 </span>
                 <div className="current-progress">
                   <Progress
@@ -271,8 +374,7 @@ export function Dashboard() {
                       <Link href={`/mission/${action.mission.id}`}>
                         {action.mission.id} —{action.task.title}
                       </Link>
-                    ) : current &&
-                      projectStatus(current, state) === "WAITING" ? (
+                    ) : current && projectStatus(current) === "WAITING" ? (
                       "Aucune autre action disponible. Reprendre une mission en attente ou en pause."
                     ) : (
                       "Choisir une nouvelle mission"
@@ -346,117 +448,44 @@ export function Dashboard() {
           </small>
         </div>
         <section
-          className="world-grid campaign-worlds"
-          aria-label="Les Worlds de votre campagne"
+          className="mission-collection"
+          aria-labelledby="missions-heading"
         >
-          {state.worlds.map((w) => {
-            const ms = subMissions(state, w.id);
-            const value = projectProgress(w, state);
-            const isCurrent = current?.id === w.id;
-            return (
-              <article
-                key={w.id}
-                className={`world-card campaign-tile project-card ${isClosed(w) ? "lifecycle-closed" : ""} ${isCurrent ? "current-world" : ""}`}
-                style={{ "--accent": w.accent } as React.CSSProperties}
-                data-project-card={w.id}
+          <header className="mission-collection-heading">
+            <h2 id="missions-heading">MISSIONS</h2>
+            <div className="mission-priority-legend">
+              <span>ACTIVES · {groups.active.length}</span>
+              <span>AVAILABLE / EN ATTENTE · {groups.available.length}</span>
+            </div>
+          </header>
+          {groups.live.length ? (
+            <div
+              className="world-grid campaign-worlds mission-live-row"
+              role="group"
+              aria-label="Missions actives puis disponibles"
+            >
+              {groups.live.map(renderProjectCard)}
+            </div>
+          ) : (
+            <p className="mission-empty-row">
+              Aucune mission en cours. Vous pouvez créer ou réactiver une
+              mission.
+            </p>
+          )}
+          {!!groups.archived.length && (
+            <>
+              <div className="mission-archive-heading">
+                ARCHIVES / TERMINÉES <span>{groups.archived.length}</span>
+              </div>
+              <div
+                className="world-grid campaign-worlds mission-archive-row"
+                role="group"
+                aria-label="Missions complétées et annulées"
               >
-                <button
-                  type="button"
-                  onClick={() => selectMission(w.id, true)}
-                  className="project-card-open"
-                  aria-label={`Afficher la mission ${w.title}`}
-                  aria-pressed={isCurrent}
-                >
-                  <span className="sr-only">
-                    Afficher {w.title} — {value} %
-                  </span>
-                </button>
-                <CampaignArt worldId={w.id} />
-                <div className="tile-shade" />
-                <div className="tile-top">
-                  <span className="world-badge">
-                    {w.number}
-                    <small>/{state.worlds.length}</small>
-                  </span>
-                  <div>
-                    <span>MISSION PRINCIPALE</span>
-                    <h2>{w.title}</h2>
-                    <p>{w.partners ? `Avec ${w.partners}` : w.subtitle}</p>
-                  </div>
-                </div>
-                <span className="tile-status">
-                  {isCurrent && !isClosed(w)
-                    ? "MISSION ACTIVE"
-                    : projectStatus(w, state)}
-                </span>
-                <div className="tile-content">
-                  <div className="tile-progress">
-                    <span className="tile-progress-value">
-                      <strong data-project-progress={w.id}>{value}%</strong>
-                      <small>PROGRESSION GLOBALE</small>
-                    </span>
-                    <Progress
-                      value={value}
-                      label={`Progression globale ${w.title}`}
-                    />
-                    <ChevronRight size={23} />
-                  </div>
-                  <div className="project-subtasks-label">
-                    {ms.length
-                      ? "SOUS-MISSIONS · OUVRIR LE DÉTAIL"
-                      : "AJOUTEZ VOS SOUS-MISSIONS"}
-                  </div>
-                  <ul>
-                    {ms.slice(0, 4).map((m) => (
-                      <li key={m.id}>
-                        <Link
-                          href={`/mission/${m.id}`}
-                          className={`project-submission-link ${missionLifecycle(m) !== "active" ? "lifecycle-closed" : ""}`}
-                          aria-label={`Ouvrir la sous-mission ${m.id} — ${m.title}`}
-                        >
-                          <span
-                            className={`objective-marker ${complete(m) ? "objective-complete" : ""}`}
-                          >
-                            {complete(m) && <Check size={10} />}
-                          </span>
-                          <span className="mission-preview-title">
-                            {m.title.charAt(0) +
-                              m.title.slice(1).toLocaleLowerCase("fr")}
-                          </span>
-                          <strong>
-                            {missionLifecycle(m) === "cancelled"
-                              ? "ANNULÉE"
-                              : missionLifecycle(m) === "completed"
-                                ? "COMPLÉTÉE · 100%"
-                                : `${progress(m)}%`}
-                          </strong>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="tile-reward">
-                    <div>
-                      <span>RÉCOMPENSE</span>
-                      <strong>
-                        {worldArt[w.id]?.reward || "NOUVEAU NIVEAU"}
-                      </strong>
-                      <small>
-                        {projectReward(w, state).toLocaleString("fr-CA")} XP
-                        BONUS
-                      </small>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/world/${w.id}`}
-                    className="project-enter button secondary"
-                    aria-label={`Entrer dans la mission ${w.title}`}
-                  >
-                    ENTRER <ArrowRight size={17} />
-                  </Link>
-                </div>
-              </article>
-            );
-          })}
+                {groups.archived.map(renderProjectCard)}
+              </div>
+            </>
+          )}
         </section>
         <section className="tactical-grid" aria-label="Objectifs tactiques">
           <div className="tactical-panel today-panel">
@@ -483,7 +512,7 @@ export function Dashboard() {
                     ? "MISSION PRIORITAIRE"
                     : today
                       ? todayParent && isClosed(todayParent)
-                        ? projectStatus(todayParent, state)
+                        ? projectStatus(todayParent)
                         : missionStatus(today, state)
                       : "HISTORIQUE"}
                 </span>
@@ -518,7 +547,7 @@ export function Dashboard() {
                     ? "IMMERSION TOTALE"
                     : tomorrow
                       ? tomorrowParent && isClosed(tomorrowParent)
-                        ? projectStatus(tomorrowParent, state)
+                        ? projectStatus(tomorrowParent)
                         : missionStatus(tomorrow, state)
                       : "HISTORIQUE"}
                 </span>
@@ -572,7 +601,7 @@ export function Dashboard() {
                       ? router.push(`/world/${w.id}`)
                       : selectMission(w.id, true)
                   }
-                  aria-label={`${isClosed(w) ? "Consulter" : "Activer"} ${w.title} depuis la vue d’ensemble`}
+                  aria-label={`${isClosed(w) ? "Consulter" : "Afficher"} ${w.title} depuis la vue d’ensemble`}
                   className={isClosed(w) ? "lifecycle-closed" : ""}
                   style={{ "--accent": w.accent } as React.CSSProperties}
                 >

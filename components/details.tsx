@@ -20,7 +20,6 @@ import {
   isClosed,
   missionLifecycle,
   taskLifecycle,
-  transition,
   transitionMission,
   transitionTask,
 } from "@/lib/lifecycle";
@@ -41,6 +40,7 @@ import { finalItems, createSeed } from "@/data/seed";
 import { isState } from "@/lib/persistence";
 import {
   projectObjective,
+  transitionProject,
   projectProgress,
   projectStatus,
   prioritizeSubMission,
@@ -73,7 +73,7 @@ export function WorldDetail({ id }: { id: string }) {
       >
         <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
-          MISSION PRINCIPALE {w.number} / {projectStatus(w, state)}
+          MISSION PRINCIPALE {w.number} / {projectStatus(w)}
         </div>
         <h1>
           {w.title}
@@ -118,12 +118,13 @@ export function WorldDetail({ id }: { id: string }) {
         <Progress value={projectProgress(w, state)} />
         <LifecycleControls
           item={w}
+          activeLabel={projectStatus(w)}
           label={w.title}
           onChange={(status) =>
             update((s) => ({
               ...s,
               worlds: s.worlds.map((world) =>
-                world.id === id ? transition(world, status) : world,
+                world.id === id ? transitionProject(world, status) : world,
               ),
             }))
           }
@@ -726,18 +727,19 @@ export function ArchivePage() {
       {state.worlds.filter(isClosed).map((w) => (
         <div className="archive-row panel" key={w.id}>
           <Link href={`/world/${w.id}`}>
-            <span className="eyebrow">{projectStatus(w, state)}</span>
+            <span className="eyebrow">{projectStatus(w)}</span>
             <h3>{w.title}</h3>
             <span>{projectProgress(w, state)} %</span>
           </Link>
           <LifecycleControls
             item={w}
+            activeLabel={projectStatus(w)}
             label={w.title}
             onChange={(status) =>
               update((s) => ({
                 ...s,
                 worlds: s.worlds.map((world) =>
-                  world.id === w.id ? transition(world, status) : world,
+                  world.id === w.id ? transitionProject(world, status) : world,
                 ),
               }))
             }

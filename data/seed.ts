@@ -61,6 +61,7 @@ export function createSeed(): State {
       },
       {
         id: "instinct",
+        availability: "available",
         number: "02",
         title: "INSTINCT",
         subtitle: "Série TV × Zone3",
@@ -83,6 +84,7 @@ export function createSeed(): State {
       },
       {
         id: "technologie",
+        availability: "available",
         number: "04",
         title: "TECHNOLOGIE",
         subtitle: "App + bracelets RFID",
@@ -94,6 +96,7 @@ export function createSeed(): State {
       },
       {
         id: "financement",
+        availability: "available",
         number: "05",
         title: "FINANCEMENT",
         subtitle: "Fondations + privé",
