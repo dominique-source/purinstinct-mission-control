@@ -3903,3 +3903,43 @@
     min-height: 450px;
   }
 }
+
+.task-return {
+  margin: 24px 0 12px;
+  padding: 20px;
+  border: 1px solid #648da7;
+  background: #071a2be8;
+  border-radius: 8px;
+}
+.task-return > p {
+  margin: 0 0 14px;
+  color: #c9e9f4;
+  font-size: 16px;
+  font-weight: 600;
+}
+.campaign-app .task-return-button {
+  display: flex;
+  width: 100%;
+  min-height: 60px;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  font-size: 18px;
+  text-align: center;
+}
+.task-return-button > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.task-return-button > svg {
+  flex-shrink: 0;
+}
+@media (max-width: 650px) {
+  .task-return {
+    padding: 16px;
+  }
+  .campaign-app .task-return-button {
+    min-height: 60px;
+    font-size: 17px;
+  }
+}

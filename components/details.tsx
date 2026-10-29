@@ -338,7 +338,6 @@ export function MissionDetail({ id }: { id: string }) {
       {complete(m) && (
         <div className="notice success">
           <Trophy size={20} /> MISSION COMPLETE · {missionXp(m)} XP acquis
-          <Link href="/">Prochaine mission →</Link>
         </div>
       )}
       <div className="detail-grid">
@@ -585,6 +584,22 @@ export function MissionDetail({ id }: { id: string }) {
           )}
         </aside>
       </div>
+      <section className="task-return" aria-label="Retour à la mission parente">
+        <p role="status">
+          {complete(m)
+            ? "Tâche complétée"
+            : missionLifecycle(m) === "cancelled"
+              ? "Tâche annulée"
+              : `Mission parente : ${w.title}`}
+        </p>
+        <Link
+          className="button primary task-return-button"
+          href={`/world/${w.id}`}
+        >
+          <ArrowLeft size={22} aria-hidden="true" />
+          <span>Retour à {w.title}</span>
+        </Link>
+      </section>
     </Shell>
   );
 }
