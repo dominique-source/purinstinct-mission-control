@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { useStudio } from "./provider";
 import { AnimatedNumber } from "./animated-number";
-import { complete, globalProgress, level, locked, totalXp } from "@/lib/engine";
+import { projectStatus } from "@/lib/project-navigation";
+import { globalProgress, level, totalXp } from "@/lib/engine";
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state } = useStudio();
   const path = usePathname();
@@ -21,7 +22,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const lv = level(xp);
   const links = [
     { href: "/", label: "Mission Control", icon: LayoutDashboard },
-    { href: "/world/vanier", label: "Les Worlds", icon: Globe2 },
+    { href: "/world/vanier", label: "Les missions", icon: Globe2 },
     { href: "/archive", label: "Missions terminées", icon: Archive },
     { href: "/settings", label: "Paramètres", icon: Settings2 },
   ];
@@ -75,8 +76,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <span>
               <strong>
                 {
-                  state.missions.filter(
-                    (m) => !m.archived && !complete(m) && !locked(m, state),
+                  state.worlds.filter(
+                    (w) => projectStatus(w, state) !== "COMPLETED",
                   ).length
                 }
               </strong>

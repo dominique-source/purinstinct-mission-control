@@ -26,6 +26,7 @@ export type Mission = {
   waitingReason?: string;
 };
 export type World = {
+  objective?: string;
   id: string;
   number: string;
   title: string;
@@ -53,6 +54,8 @@ export type State = {
   worlds: World[];
   missions: Mission[];
   currentId: string;
+  /** Selected primary project; separate from the legacy child-focus pointer. */
+  activeWorldId?: string;
   settings: Settings;
   finalChecklist: string[];
 };

@@ -13,7 +13,6 @@ import {
   Flag,
   Flame,
   Layers,
-  Lock,
   Radio,
   ScanLine,
   Handshake,
@@ -27,11 +26,16 @@ import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt, worldArt } from "./campaign-art";
 import {
-  missionBrowser,
-  adjacentMission,
-  overviewMission,
-  activeMissions,
-} from "@/lib/mission-browser";
+  projectBrowser,
+  adjacentProject,
+  selectProject,
+  subMissions,
+  projectProgress,
+  projectObjective,
+  projectStatus,
+  projectNextAction,
+  projectReward,
+} from "@/lib/project-navigation";
 import {
   complete,
   countdown,
@@ -40,11 +44,9 @@ import {
   recommendedAfter,
   sequenceReady,
   missionStatus,
-  nextAction,
   progress,
   streak,
   totalXp,
-  worldLocked,
 } from "@/lib/engine";
 export const worldIcons = [Flag, Radio, Layers, ScanLine, Handshake];
 export function Progress({
@@ -70,11 +72,10 @@ export function Progress({
 export function Dashboard() {
   const { state, ready, update } = useStudio();
   const heroRef = useRef<HTMLElement>(null);
-  const browser = missionBrowser(state);
-  const selectMission = (id: string, scroll = false) => {
-    if (!activeMissions(state).some((m) => m.id === id)) return;
-    update((s) => ({ ...s, currentId: id }));
-    if (scroll)
+  const browser = projectBrowser(state);
+  const selectMission = (id: string, reveal = false) => {
+    update((s) => selectProject(s, id));
+    if (reveal)
       heroRef.current?.scrollIntoView({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
           ? "instant"
@@ -83,8 +84,8 @@ export function Dashboard() {
       });
   };
   const moveMission = (delta: number) => {
-    const mission = adjacentMission(state, delta);
-    if (mission) selectMission(mission.id);
+    const project = adjacentProject(state, delta);
+    if (project) selectMission(project.id);
   };
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
@@ -94,15 +95,15 @@ export function Dashboard() {
     return () => clearInterval(id);
   }, []);
   const current = browser.selected;
-  const action = nextAction(current, state);
-  const currentWorld = state.worlds.find((w) => w.id === current?.worldId);
+  const action = current ? projectNextAction(current, state) : undefined;
+  const currentWorld = current;
   const cd = countdown(
     state.settings.finalBossDate,
     now ?? new Date("2026-10-26T12:00:00-04:00").getTime(),
   );
   const xp = totalXp(state),
     lv = level(xp);
-  const missionProgress = current ? progress(current) : 100;
+  const missionProgress = current ? projectProgress(current, state) : 0;
   const milestones = ["V1", "V2", "V4", "V3", "F1"]
     .map((id) => state.missions.find((m) => m.id === id))
     .filter((m) => !!m);
@@ -165,7 +166,7 @@ export function Dashboard() {
                   <button
                     type="button"
                     onClick={() => moveMission(-1)}
-                    disabled={browser.missions.length < 2}
+                    disabled={browser.projects.length < 2}
                     aria-label="Mission précédente"
                   >
                     <ChevronUp size={17} />
@@ -176,33 +177,28 @@ export function Dashboard() {
                   <select
                     id="mission-browser"
                     value={current?.id || ""}
-                    disabled={!browser.missions.length}
+                    disabled={!browser.projects.length}
                     onChange={(e) => selectMission(e.target.value)}
                   >
                     {!current && (
-                      <option value="">
-                        Toutes les missions sont terminées
-                      </option>
+                      <option value="">Aucune mission principale</option>
                     )}
-                    {browser.missions.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.id} ·{" "}
-                        {state.worlds.find((w) => w.id === m.worldId)?.title} —{" "}
-                        {m.title}
-                        {m.workState ? ` · ${missionStatus(m, state)}` : ""}
+                    {browser.projects.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.title} · {projectProgress(w, state)} %
                       </option>
                     ))}
                   </select>
                   <span
                     className="mission-browser-count"
-                    aria-label={`Mission ${current ? browser.index + 1 : 0} sur ${browser.missions.length}`}
+                    aria-label={`Mission ${current ? browser.index + 1 : 0} sur ${browser.projects.length}`}
                   >
-                    {current ? browser.index + 1 : 0}/{browser.missions.length}
+                    {current ? browser.index + 1 : 0}/{browser.projects.length}
                   </span>
                   <button
                     type="button"
                     onClick={() => moveMission(1)}
-                    disabled={browser.missions.length < 2}
+                    disabled={browser.projects.length < 2}
                     aria-label="Mission suivante"
                   >
                     <ChevronDown size={17} />
@@ -221,15 +217,19 @@ export function Dashboard() {
                   {currentWorld?.title || "SEASON COMPLETE"}
                 </div>
                 <h1>
-                  {current?.title || "LA VISION PREND VIE."}
+                  {current ? projectObjective(current) : "LA VISION PREND VIE."}
                   <ChevronRight size={20} />
                 </h1>
+                <span className="project-hero-status" data-project-status>
+                  {current ? projectStatus(current, state) : "AVAILABLE"} ·
+                  MISSION PRINCIPALE
+                </span>
                 <div className="current-progress">
                   <Progress
                     value={missionProgress}
                     label={`Progression de la mission ${current?.id || "terminée"}`}
                   />
-                  <strong data-mission-progress={current?.id}>
+                  <strong data-project-progress={current?.id}>
                     {missionProgress}%
                   </strong>
                 </div>
@@ -239,12 +239,10 @@ export function Dashboard() {
                   <strong>
                     {action ? (
                       <Link href={`/mission/${action.mission.id}`}>
-                        {action.mission.id !== current?.id
-                          ? `${action.mission.id} — `
-                          : ""}
-                        {action.task.title}
+                        {action.mission.id} —{action.task.title}
                       </Link>
-                    ) : current?.workState ? (
+                    ) : current &&
+                      projectStatus(current, state) === "WAITING" ? (
                       "Aucune autre action disponible. Reprendre une mission en attente ou en pause."
                     ) : (
                       "Choisir une nouvelle mission"
@@ -254,14 +252,15 @@ export function Dashboard() {
                 <div className="current-mission-bottom">
                   <span>
                     <Zap size={13} />
-                    {current?.xpReward || 0} XP · BONUS MISSION
+                    {current ? projectReward(current, state) : 0} XP · BONUS
+                    MISSION
                   </span>
                   {current && (
                     <Link
-                      href={`/mission/${current.id}`}
+                      href={`/world/${current.id}`}
                       className="mission-launch"
                     >
-                      OUVRIR LA MISSION <ArrowRight size={15} />
+                      ENTRER DANS LA MISSION <ArrowRight size={15} />
                     </Link>
                   )}
                 </div>
@@ -321,22 +320,27 @@ export function Dashboard() {
           aria-label="Les Worlds de votre campagne"
         >
           {state.worlds.map((w) => {
-            const ms = state.missions
-              .filter((m) => m.worldId === w.id && !m.archived)
-              .sort((a, b) => a.order - b.order);
-            const displayed = overviewMission(state, w.id);
-            const preview =
-              displayed && !ms.slice(0, 4).some((m) => m.id === displayed.id)
-                ? [...ms.slice(0, 3), displayed]
-                : ms.slice(0, 4);
-            const isLocked = worldLocked(w, state);
-            const isCurrent = currentWorld?.id === w.id;
+            const ms = subMissions(state, w.id);
+            const value = projectProgress(w, state);
+            const isCurrent = current?.id === w.id;
             return (
               <article
-                className={`world-card campaign-tile ${isLocked ? "is-locked" : ""} ${isCurrent ? "current-world" : ""}`}
-                style={{ "--accent": w.accent } as React.CSSProperties}
                 key={w.id}
+                className={`world-card campaign-tile project-card ${isCurrent ? "current-world" : ""}`}
+                style={{ "--accent": w.accent } as React.CSSProperties}
+                data-project-card={w.id}
               >
+                <button
+                  type="button"
+                  className="project-card-select"
+                  onClick={() => selectMission(w.id, true)}
+                  aria-label={`Activer la mission ${w.title}`}
+                  aria-pressed={isCurrent}
+                >
+                  <span className="sr-only">
+                    Sélectionner {w.title} — {value} %
+                  </span>
+                </button>
                 <CampaignArt worldId={w.id} />
                 <div className="tile-shade" />
                 <div className="tile-top">
@@ -344,69 +348,37 @@ export function Dashboard() {
                     {w.number}
                     <small>/{state.worlds.length}</small>
                   </span>
-                  <Link
-                    href={`/world/${w.id}`}
-                    className="tile-world-link"
-                    aria-label={`Ouvrir le World ${w.title}`}
-                  >
-                    <span>WORLD {w.number}</span>
+                  <div>
+                    <span>MISSION PRINCIPALE</span>
                     <h2>{w.title}</h2>
                     <p>{w.subtitle}</p>
-                  </Link>
-                  {isLocked && <Lock size={15} className="tile-lock" />}
+                  </div>
                 </div>
-                <span
-                  className="tile-status"
-                  title={
-                    w.unlockConditions.length
-                      ? `Séquence recommandée après ${w.unlockConditions.join(", ")}. Travail en parallèle possible.`
-                      : undefined
-                  }
-                >
-                  {isLocked
-                    ? "LOCKED"
-                    : isCurrent
-                      ? "MISSION AFFICHÉE"
-                      : w.unlockConditions.length
-                        ? `AVAILABLE · APRÈS ${w.unlockConditions.join(", ")} CONSEILLÉ`
-                        : "AVAILABLE"}
+                <span className="tile-status">
+                  {isCurrent ? "MISSION ACTIVE" : projectStatus(w, state)}
                 </span>
                 <div className="tile-content">
-                  <button
-                    type="button"
-                    className="tile-progress mission-progress-select"
-                    onClick={() =>
-                      displayed && selectMission(displayed.id, true)
-                    }
-                    disabled={!displayed || complete(displayed)}
-                    aria-label={`Afficher ${displayed?.id || w.title} dans le grand encadré`}
-                  >
+                  <div className="tile-progress">
                     <span className="tile-progress-value">
-                      <strong data-mission-progress={displayed?.id}>
-                        {displayed ? progress(displayed) : 0}%
-                      </strong>
-                      <small>
-                        {displayed
-                          ? `MISSION ${displayed.id}`
-                          : "AUCUNE MISSION"}
-                      </small>
+                      <strong data-project-progress={w.id}>{value}%</strong>
+                      <small>PROGRESSION GLOBALE</small>
                     </span>
                     <Progress
-                      value={displayed ? progress(displayed) : 0}
-                      label={`Progression de la mission ${displayed?.id || w.title}`}
+                      value={value}
+                      label={`Progression globale ${w.title}`}
                     />
                     <ChevronRight size={23} />
-                  </button>
+                  </div>
+                  <div className="project-subtasks-label">
+                    SOUS-MISSIONS · OUVRIR LE DÉTAIL
+                  </div>
                   <ul>
-                    {preview.map((m) => (
+                    {ms.slice(0, 4).map((m) => (
                       <li key={m.id}>
-                        <button
-                          type="button"
-                          className={`mission-preview ${current?.id === m.id ? "selected" : ""}`}
-                          disabled={complete(m)}
-                          onClick={() => selectMission(m.id, true)}
-                          aria-label={`Afficher ${m.id} — ${m.title} — ${progress(m)} %`}
-                          aria-pressed={current?.id === m.id}
+                        <Link
+                          href={`/mission/${m.id}`}
+                          className="project-submission-link"
+                          aria-label={`Ouvrir la sous-mission ${m.id} — ${m.title}`}
                         >
                           <span
                             className={`objective-marker ${complete(m) ? "objective-complete" : ""}`}
@@ -417,10 +389,8 @@ export function Dashboard() {
                             {m.title.charAt(0) +
                               m.title.slice(1).toLocaleLowerCase("fr")}
                           </span>
-                          <strong data-mission-progress={m.id}>
-                            {progress(m)}%
-                          </strong>
-                        </button>
+                          <strong>{progress(m)}%</strong>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -431,24 +401,18 @@ export function Dashboard() {
                         {worldArt[w.id]?.reward || "NOUVEAU NIVEAU"}
                       </strong>
                       <small>
-                        {ms
-                          .reduce((a, m) => a + m.xpReward, 0)
-                          .toLocaleString("fr-CA")}{" "}
-                        XP BONUS
+                        {projectReward(w, state).toLocaleString("fr-CA")} XP
+                        BONUS
                       </small>
                     </div>
-                    <Link
-                      href={`/world/${w.id}`}
-                      aria-label={`Voir le parcours ${w.title}`}
-                      className="tile-world-open"
-                    >
-                      {isLocked ? (
-                        <Lock size={21} />
-                      ) : (
-                        <ArrowUpRight size={20} />
-                      )}
-                    </Link>
                   </div>
+                  <Link
+                    href={`/world/${w.id}`}
+                    className="project-enter button secondary"
+                    aria-label={`Entrer dans la mission ${w.title}`}
+                  >
+                    ENTRER <ArrowRight size={17} />
+                  </Link>
                 </div>
               </article>
             );
@@ -529,34 +493,26 @@ export function Dashboard() {
               <strong>{globalProgress(state)}%</strong>
             </header>
             <div className="world-intelligence">
-              {state.worlds.map((w) => {
-                const displayed = overviewMission(state, w.id);
-                return (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      displayed && selectMission(displayed.id, true)
-                    }
-                    disabled={!displayed || complete(displayed)}
-                    aria-label={`Afficher ${displayed?.id || w.title} — ${displayed?.title || w.title}`}
-                    key={w.id}
-                    style={{ "--accent": w.accent } as React.CSSProperties}
-                  >
-                    <span>
-                      {displayed?.id} ·{" "}
-                      {w.title.charAt(0) + w.title.slice(1).toLowerCase()}
-                    </span>
-                    <Progress
-                      value={displayed ? progress(displayed) : 0}
-                      label={`Progression de la mission ${displayed?.id || w.title}`}
-                    />
-                    <strong data-mission-progress={displayed?.id}>
-                      {displayed ? progress(displayed) : 0}%
-                    </strong>
-                    {worldLocked(w, state) && <Lock size={10} />}
-                  </button>
-                );
-              })}
+              {state.worlds.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => selectMission(w.id, true)}
+                  aria-label={`Activer ${w.title} depuis la vue d’ensemble`}
+                  style={{ "--accent": w.accent } as React.CSSProperties}
+                >
+                  <span>
+                    {w.title.charAt(0) + w.title.slice(1).toLowerCase()}
+                  </span>
+                  <Progress
+                    value={projectProgress(w, state)}
+                    label={`Progression globale ${w.title}`}
+                  />
+                  <strong data-project-progress={w.id}>
+                    {projectProgress(w, state)}%
+                  </strong>
+                </button>
+              ))}
             </div>
             <div className="intelligence-quote">
               ON BÂTIT

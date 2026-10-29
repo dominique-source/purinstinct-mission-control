@@ -24,11 +24,16 @@ import {
   nextAction,
   missionXp,
   progress,
-  weighted,
 } from "@/lib/engine";
 import type { Mission, World } from "@/types";
 import { finalItems, createSeed } from "@/data/seed";
 import { isState } from "@/lib/persistence";
+import {
+  projectObjective,
+  projectProgress,
+  projectStatus,
+  prioritizeSubMission,
+} from "@/lib/project-navigation";
 const Back = () => (
   <Link href="/" className="back">
     <ArrowLeft size={16} /> Mission Control
@@ -56,16 +61,18 @@ export function WorldDetail({ id }: { id: string }) {
         style={{ "--accent": w.accent } as React.CSSProperties}
       >
         <CampaignArt worldId={w.id} priority />
-        <div className="eyebrow">WORLD {w.number} / AVAILABLE</div>
+        <div className="eyebrow">
+          MISSION PRINCIPALE {w.number} / {projectStatus(w, state)}
+        </div>
         <h1>
           {w.title}
           <span className="heading-dot">.</span>
         </h1>
-        <p>{w.subtitle}</p>
+        <p>{projectObjective(w)}</p>
         <div className="detail-description">{w.description}</div>
         <div className="detail-stats">
           <strong>
-            {weighted(ms)}% <small>PROGRESSION</small>
+            {projectProgress(w, state)}% <small>PROGRESSION</small>
           </strong>
           <strong>
             {ms.reduce((a, m) => a + missionXp(m), 0)} <small>XP ACQUIS</small>
@@ -75,7 +82,7 @@ export function WorldDetail({ id }: { id: string }) {
             <small>MISSIONS FERMÉES</small>
           </strong>
         </div>
-        <Progress value={weighted(ms)} />
+        <Progress value={projectProgress(w, state)} />
       </div>
       {w.unlockConditions.length > 0 && (
         <div className="notice">
@@ -121,8 +128,8 @@ export function WorldDetail({ id }: { id: string }) {
         </section>
       )}
       <div className="section-heading">
-        <h2>PARCOURS RECOMMANDÉ</h2>
-        <span>{ms.length} MISSIONS</span>
+        <h2>SOUS-MISSIONS · PARCOURS RECOMMANDÉ</h2>
+        <span>{ms.length} SOUS-MISSIONS</span>
       </div>
       <div className="mission-map">
         {ms.map((m, i) => {
@@ -210,12 +217,13 @@ export function MissionDetail({ id }: { id: string }) {
   return (
     <Shell>
       <Link className="back" href={`/world/${w.id}`}>
-        <ArrowLeft size={16} /> WORLD {w.number} / {w.title}
+        <ArrowLeft size={16} /> {w.title} / SOUS-MISSIONS
       </Link>
       <div className="detail-heading">
         <CampaignArt worldId={w.id} priority />
         <div className="eyebrow">
-          MISSION {m.id} <span className="tag">{missionStatus(m, state)}</span>
+          SOUS-MISSION {m.id}{" "}
+          <span className="tag">{missionStatus(m, state)}</span>
         </div>
         <h1 className="mission-title">{m.title}</h1>
         <div className="detail-actions">
@@ -237,12 +245,12 @@ export function MissionDetail({ id }: { id: string }) {
           <button
             className="button secondary"
             disabled={complete(m) || m.archived}
-            onClick={() => update((s) => ({ ...s, currentId: id }))}
+            onClick={() => update((s) => prioritizeSubMission(s, id))}
           >
             <Target size={16} />
             {state.currentId === id
-              ? "MISSION ACTUELLE"
-              : "DÉFINIR COMME MISSION ACTUELLE"}
+              ? "SOUS-MISSION PRIORITAIRE"
+              : "PRIORISER CETTE SOUS-MISSION"}
           </button>
           <button
             className="button secondary"
@@ -656,7 +664,7 @@ function MissionFields({
             Réouvrir et décocher toutes les actions
           </option>
           <option value="active" disabled>
-            Mission actuelle (bouton ci-dessus)
+            Sous-mission prioritaire (bouton ci-dessus)
           </option>
           <option value="complete" disabled={m.tasks.length === 0}>
             Terminer toutes les actions
@@ -1100,6 +1108,13 @@ function WorldFields({ world: w }: { world: World }) {
         <input
           value={w.title}
           onChange={(e) => patch({ title: e.target.value })}
+        />
+      </label>
+      <label>
+        Objectif principal
+        <input
+          value={projectObjective(w)}
+          onChange={(e) => patch({ objective: e.target.value })}
         />
       </label>
       <label>

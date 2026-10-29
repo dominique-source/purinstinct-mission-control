@@ -226,56 +226,89 @@ test("streak still counts distinct Toronto completion days", () => {
   assert.equal(streak(s, new Date("2026-10-29T17:00:00Z")), 0);
 });
 
-test("mission browser includes every active front and wraps previous/next without editing tasks", async () => {
-  const { activeMissions, missionBrowser, adjacentMission } =
-    await import("./mission-browser");
-  const s = createSeed();
-  s.missions[0].workState = "waiting";
-  s.missions[1].workState = "paused";
-  assert.equal(activeMissions(s).length, 25);
-  const before = JSON.stringify(s.missions);
-  s.currentId = "F7";
-  assert.equal(missionBrowser(s).selected?.id, "F7");
-  assert.equal(adjacentMission(s, 1)?.id, "V1");
-  s.currentId = "V1";
-  assert.equal(adjacentMission(s, -1)?.id, "F7");
-  assert.equal(JSON.stringify(s.missions), before);
-});
-test("hero and every overview read the selected mission progress, not its World average", async () => {
-  const { missionBrowser, overviewMission } = await import("./mission-browser");
-  const { s, v1, v2 } = parallelScenario();
-  s.currentId = "V1";
-  assert.equal(progress(missionBrowser(s).selected!), 75);
-  assert.equal(progress(overviewMission(s, "vanier")!), 75);
-  assert.equal(overviewMission(s, "vanier"), missionBrowser(s).selected);
-  s.currentId = "V2";
-  v2.tasks[0].completed = true;
-  assert.equal(overviewMission(s, "vanier"), v2);
-  assert.equal(
-    progress(missionBrowser(s).selected!),
-    progress(overviewMission(s, "vanier")!),
-  );
-  v2.tasks[1].completed = true;
-  assert.equal(progress(overviewMission(s, "vanier")!), 18);
+test("primary navigation selects only parent projects and preserves all child data and XP", async () => {
+  const { projectBrowser, selectProject, projectProgress } =
+    await import("./project-navigation");
+  const { s, v1 } = parallelScenario();
+  const before = JSON.stringify(s.missions),
+    xp = totalXp(s);
+  const selected = selectProject(s, "instinct");
+  assert.equal(projectBrowser(selected).selected?.id, "instinct");
+  assert.equal(selected.currentId, s.currentId);
+  assert.equal(JSON.stringify(selected.missions), before);
+  assert.equal(totalXp(selected), xp);
+  const back = selectProject(selected, "vanier");
+  assert.equal(projectProgress(back.worlds[0], back), 6);
   assert.equal(progress(v1), 75);
+  assert.equal(selectProject(s, "V2"), s);
 });
-test("browser handles completion, archive, custom missions, persisted selection and empty campaigns", async () => {
-  const { activeMissions, missionBrowser, adjacentMission } =
-    await import("./mission-browser");
+test("opening or prioritizing a child never promotes it to the primary mission or swaps its percentage", async () => {
+  const {
+    projectBrowser,
+    selectProject,
+    prioritizeSubMission,
+    projectProgress,
+  } = await import("./project-navigation");
+  const { s, v2 } = parallelScenario();
+  let selected = selectProject(s, "vanier");
+  const value = projectProgress(s.worlds[0], selected);
+  selected = prioritizeSubMission(selected, "V2");
+  assert.equal(projectBrowser(selected).selected?.id, "vanier");
+  assert.equal(projectProgress(s.worlds[0], selected), value);
+  assert.equal(progress(v2), 0);
+  selected = prioritizeSubMission(selected, "I1");
+  assert.equal(projectBrowser(selected).selected?.id, "vanier");
+  assert.equal(projectProgress(s.worlds[0], selected), value);
+  const legacy = prioritizeSubMission(s, "I1");
+  assert.equal(projectBrowser(legacy).selected?.id, "vanier");
+});
+test("legacy saves map child focus to its parent without migration; new parent selection survives refresh", async () => {
+  const { isState } = await import("./persistence");
+  const { projectBrowser, selectProject, adjacentProject } =
+    await import("./project-navigation");
   const s = createSeed();
-  s.missions.push({ ...s.missions[0], id: "CUSTOM", order: 99 });
-  s.currentId = "CUSTOM";
+  s.currentId = "C2";
+  assert.equal(isState(s), true);
+  assert.equal(projectBrowser(s).selected?.id, "cliniques");
+  const restored = JSON.parse(JSON.stringify(selectProject(s, "financement")));
+  assert.equal(isState(restored), true);
+  assert.equal(projectBrowser(restored).selected?.id, "financement");
+  assert.equal(adjacentProject(restored, 1)?.id, "vanier");
   assert.equal(
-    missionBrowser(JSON.parse(JSON.stringify(s))).selected?.id,
-    "CUSTOM",
+    projectBrowser({ ...s, activeWorldId: "missing" }).selected?.id,
+    "cliniques",
   );
-  s.missions.find((m) => m.id === "CUSTOM")!.archived = true;
-  assert.notEqual(missionBrowser(s).selected?.id, "CUSTOM");
-  s.missions.forEach((m) => m.tasks.forEach((t) => (t.completed = true)));
-  assert.equal(activeMissions(s).length, 0);
-  assert.equal(missionBrowser(s).selected, undefined);
-  assert.equal(adjacentMission(s, 1), undefined);
-  s.missions[0].tasks[0].completed = false;
-  assert.equal(missionBrowser(s).selected?.id, "V1");
-  assert.equal(adjacentMission(s, 1)?.id, "V1");
+  assert.equal(isState({ ...s, activeWorldId: 3 }), false);
+});
+test("primary progression changes only with actual work and parent data, never navigation", async () => {
+  const {
+    projectProgress,
+    projectObjective,
+    projectStatus,
+    selectProject,
+    projectNextAction,
+  } = await import("./project-navigation");
+  const { s, v1, v2 } = parallelScenario();
+  const w = s.worlds[0];
+  v1.workState = "waiting";
+  assert.equal(projectNextAction(w, s)?.mission.id, "V2");
+  assert.equal(
+    projectProgress(w, s),
+    weighted(s.missions.filter((m) => m.worldId === w.id)),
+  );
+  const before = projectProgress(w, s);
+  for (const world of s.worlds)
+    assert.equal(projectProgress(w, selectProject(s, world.id)), before);
+  v2.tasks[0].completed = true;
+  assert.ok(projectProgress(w, s) > before);
+  assert.equal(projectObjective(w), "BÂTIR L’ÉCOLE FONDATRICE");
+  assert.equal(
+    projectObjective({ ...w, objective: "Objectif édité" }),
+    "Objectif édité",
+  );
+  s.missions
+    .filter((m) => m.worldId === w.id)
+    .forEach((m) => m.tasks.forEach((t) => (t.completed = true)));
+  assert.equal(projectProgress(w, s), 100);
+  assert.equal(projectStatus(w, s), "COMPLETED");
 });

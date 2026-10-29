@@ -10,6 +10,7 @@ export function isState(value: unknown): value is State {
     !Array.isArray(s.missions) ||
     !Array.isArray(s.finalChecklist) ||
     !s.settings ||
+    (s.activeWorldId !== undefined && typeof s.activeWorldId !== "string") ||
     typeof s.currentId !== "string"
   )
     return false;
@@ -21,6 +22,7 @@ export function isState(value: unknown): value is State {
         typeof w.id !== "string" ||
         typeof w.title !== "string" ||
         typeof w.subtitle !== "string" ||
+        (w.objective !== undefined && typeof w.objective !== "string") ||
         typeof w.description !== "string" ||
         typeof w.accent !== "string" ||
         !Array.isArray(w.unlockConditions),
