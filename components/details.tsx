@@ -14,12 +14,22 @@ import {
   Trophy,
   Download,
 } from "lucide-react";
+import { LifecycleControls } from "./lifecycle-controls";
+import {
+  isClosed,
+  missionLifecycle,
+  taskLifecycle,
+  transition,
+  transitionMission,
+  transitionTask,
+} from "@/lib/lifecycle";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt } from "./campaign-art";
 import { Progress } from "./dashboard";
 import {
   complete,
+  missionClosed,
   missionStatus,
   nextAction,
   missionXp,
@@ -83,6 +93,22 @@ export function WorldDetail({ id }: { id: string }) {
           </strong>
         </div>
         <Progress value={projectProgress(w, state)} />
+        <LifecycleControls
+          item={w}
+          label={w.title}
+          onChange={(status) =>
+            update((s) => ({
+              ...s,
+              worlds: s.worlds.map((world) =>
+                world.id === id ? transition(world, status) : world,
+              ),
+            }))
+          }
+        />
+        <p className="lifecycle-note">
+          La fermeture concerne cette mission uniquement. Les sous-missions et
+          le projet restent conservés.
+        </p>
       </div>
       {w.unlockConditions.length > 0 && (
         <div className="notice">
@@ -134,7 +160,11 @@ export function WorldDetail({ id }: { id: string }) {
       <div className="mission-map">
         {ms.map((m, i) => {
           return (
-            <Link href={`/mission/${m.id}`} className="map-item" key={m.id}>
+            <Link
+              href={`/mission/${m.id}`}
+              className={`map-item ${missionClosed(m) ? "lifecycle-closed" : ""}`}
+              key={m.id}
+            >
               <span
                 className={`map-node ${complete(m) ? "node-complete" : ""}`}
               >
@@ -153,7 +183,7 @@ export function WorldDetail({ id }: { id: string }) {
                   {m.tasks.filter((t) => t.completed).length}/{m.tasks.length}{" "}
                   actions · {m.xpReward} XP bonus
                 </p>
-                {m.workState && (
+                {m.workState && !missionClosed(m) && (
                   <p>
                     {m.waitingReason ||
                       (m.workState === "waiting"
@@ -210,7 +240,6 @@ export function MissionDetail({ id }: { id: string }) {
           custom: true,
         },
       ],
-      completedAt: undefined,
     });
     setNewTask("");
   };
@@ -244,7 +273,7 @@ export function MissionDetail({ id }: { id: string }) {
           </span>
           <button
             className="button secondary"
-            disabled={complete(m) || m.archived}
+            disabled={missionClosed(m) || m.archived || isClosed(w)}
             onClick={() => update((s) => prioritizeSubMission(s, id))}
           >
             <Target size={16} />
@@ -265,7 +294,12 @@ export function MissionDetail({ id }: { id: string }) {
           <strong>{progress(m)}%</strong>
         </div>
       </div>
-      {m.workState && (
+      <LifecycleControls
+        item={{ ...m, status: missionLifecycle(m) }}
+        label={m.title}
+        onChange={(status) => patchMission(id, transitionMission(m, status))}
+      />
+      {m.workState && !missionClosed(m) && (
         <div className="notice">
           <ArrowRight size={18} />
           {m.workState === "waiting"
@@ -301,19 +335,33 @@ export function MissionDetail({ id }: { id: string }) {
               {m.tasks.map((t) => (
                 <div
                   key={t.id}
-                  className={`task-row ${t.completed ? "checked" : ""}`}
+                  className={`task-row ${t.completed ? "checked" : ""} ${taskLifecycle(t) !== "active" ? "lifecycle-closed" : ""}`}
                 >
                   <label className="task-check">
                     <input
                       type="checkbox"
                       checked={t.completed}
                       onChange={() => toggleTask(id, t.id)}
+                      disabled={taskLifecycle(t) === "cancelled"}
                     />
                     <span className="checkbox">
                       {t.completed && <Check size={16} />}
                     </span>
                     <span className="task-text">{t.title}</span>
                   </label>
+                  <LifecycleControls
+                    item={{ ...t, status: taskLifecycle(t) }}
+                    label={t.title}
+                    onChange={(status) =>
+                      patchMission(id, {
+                        tasks: m.tasks.map((task) =>
+                          task.id === t.id
+                            ? transitionTask(task, status)
+                            : task,
+                        ),
+                      })
+                    }
+                  />
                   {editing ? (
                     <>
                       <input
@@ -354,7 +402,6 @@ export function MissionDetail({ id }: { id: string }) {
                         onClick={() =>
                           patchMission(id, {
                             tasks: m.tasks.filter((task) => task.id !== t.id),
-                            completedAt: undefined,
                           })
                         }
                       >
@@ -429,6 +476,7 @@ export function MissionDetail({ id }: { id: string }) {
             <label>
               État de travail
               <select
+                disabled={missionClosed(m)}
                 value={m.workState || "available"}
                 onChange={(e) =>
                   patchMission(id, {
@@ -616,68 +664,30 @@ function MissionFields({
         Mission Boss
       </label>
       <label>
-        Statut
+        État de travail (mission active)
         <select
-          value={
-            m.archived
-              ? "archived"
-              : complete(m)
-                ? "complete"
-                : m.workState ||
-                  (state.currentId === m.id ? "active" : "available")
+          value={m.workState || "available"}
+          disabled={missionClosed(m)}
+          onChange={(e) =>
+            onChange({
+              workState:
+                e.target.value === "available"
+                  ? undefined
+                  : (e.target.value as "waiting" | "paused"),
+            })
           }
-          onChange={(e) => {
-            const status = e.target.value;
-            if (status === "waiting" || status === "paused")
-              onChange({ workState: status, archived: false });
-            else if (status === "archived") onChange({ archived: true });
-            else if (status === "complete") {
-              onChange({
-                archived: false,
-                workState: undefined,
-                tasks: m.tasks.map((t) => ({
-                  ...t,
-                  completed: true,
-                  completedAt: t.completedAt || new Date().toISOString(),
-                })),
-                completedAt: m.completedAt || new Date().toISOString(),
-              });
-            } else if (status === "available")
-              onChange({ archived: false, workState: undefined });
-            else if (status === "reopen")
-              onChange({
-                workState: undefined,
-                archived: false,
-                tasks: m.tasks.map((t) => ({
-                  ...t,
-                  completed: false,
-                  completedAt: undefined,
-                })),
-                completedAt: undefined,
-              });
-          }}
         >
-          <option value="available">Disponible / Reprendre</option>
+          <option value="available">Disponible</option>
           <option value="waiting">WAITING — En attente</option>
           <option value="paused">PAUSED — En pause</option>
-          <option value="reopen">
-            Réouvrir et décocher toutes les actions
-          </option>
-          <option value="active" disabled>
-            Sous-mission prioritaire (bouton ci-dessus)
-          </option>
-          <option value="complete" disabled={m.tasks.length === 0}>
-            Terminer toutes les actions
-          </option>
-          <option value="archived">Archivée</option>
         </select>
       </label>
     </div>
   );
 }
 export function ArchivePage() {
-  const { state, patchMission } = useStudio();
-  const items = state.missions.filter((m) => complete(m) || m.archived);
+  const { state, patchMission, update } = useStudio();
+  const items = state.missions.filter((m) => missionClosed(m) || m.archived);
   return (
     <Shell>
       <Back />
@@ -688,7 +698,28 @@ export function ArchivePage() {
         </h1>
         <p>Chaque mission fermée construit la suite.</p>
       </div>
-      {!items.length && (
+      {state.worlds.filter(isClosed).map((w) => (
+        <div className="archive-row panel" key={w.id}>
+          <Link href={`/world/${w.id}`}>
+            <span className="eyebrow">{projectStatus(w, state)}</span>
+            <h3>{w.title}</h3>
+            <span>{projectProgress(w, state)} %</span>
+          </Link>
+          <LifecycleControls
+            item={w}
+            label={w.title}
+            onChange={(status) =>
+              update((s) => ({
+                ...s,
+                worlds: s.worlds.map((world) =>
+                  world.id === w.id ? transition(world, status) : world,
+                ),
+              }))
+            }
+          />
+        </div>
+      ))}
+      {!items.length && !state.worlds.some(isClosed) && (
         <section className="panel empty-state">
           <Trophy size={40} />
           <h2>LE PREMIER SUCCÈS VOUS ATTEND.</h2>
@@ -702,11 +733,18 @@ export function ArchivePage() {
         <div className="archive-row panel" key={m.id}>
           <Link href={`/mission/${m.id}`}>
             <span className="eyebrow">
-              {m.id} · {m.archived ? "ARCHIVÉE" : "MISSION COMPLETE"}
+              {m.id} · {missionStatus(m, state)}
             </span>
             <h3>{m.title}</h3>
             <span className="reward">{missionXp(m)} XP</span>
           </Link>
+          <LifecycleControls
+            item={{ ...m, status: missionLifecycle(m) }}
+            label={m.title}
+            onChange={(status) =>
+              patchMission(m.id, transitionMission(m, status))
+            }
+          />
           {m.archived && (
             <button
               className="button secondary"
@@ -909,6 +947,7 @@ export function SettingsPage() {
                   id,
                   worldId,
                   title: newTitle.trim(),
+                  status: "active",
                   objective: newTitle.trim(),
                   description: "Mission personnalisée",
                   xpReward: 300,

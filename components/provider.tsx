@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { State, Mission } from "@/types";
 import { AnimatedNumber } from "./animated-number";
+import { missionLifecycle, transitionTask } from "@/lib/lifecycle";
 import { complete } from "@/lib/engine";
 import {
   getSnapshot,
@@ -40,10 +41,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const patchMission = (id: string, patch: Partial<Mission>) => {
     const previous = getSnapshot().state.missions.find((m) => m.id === id);
     if (!previous) return;
-    const changed = { ...previous, ...patch };
-    changed.completedAt = complete(changed)
-      ? previous.completedAt || new Date().toISOString()
-      : undefined;
+    const changed = {
+      ...previous,
+      status: missionLifecycle(previous),
+      ...patch,
+    };
     if (complete(changed) && !complete(previous)) {
       setCelebration(changed);
       window.dispatchEvent(
@@ -68,11 +70,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     patchMission(mid, {
       tasks: previous.tasks.map((t) =>
         t.id === tid
-          ? {
-              ...t,
-              completed: !t.completed,
-              completedAt: !t.completed ? new Date().toISOString() : undefined,
-            }
+          ? transitionTask(t, t.completed ? "active" : "completed")
           : t,
       ),
     });

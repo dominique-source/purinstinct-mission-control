@@ -1,12 +1,17 @@
-export type Task = {
+export type LifecycleStatus = "active" | "completed" | "cancelled";
+export type Lifecycle = {
+  status?: LifecycleStatus;
+  history?: { status: LifecycleStatus; at: string }[];
+  completedAt?: string;
+};
+export type Task = Lifecycle & {
   id: string;
   title: string;
   completed: boolean;
   xp: number;
   custom?: boolean;
-  completedAt?: string;
 };
-export type Mission = {
+export type Mission = Lifecycle & {
   id: string;
   worldId: string;
   title: string;
@@ -21,11 +26,10 @@ export type Mission = {
   isBoss?: boolean;
   dueDate?: string;
   archived?: boolean;
-  completedAt?: string;
   workState?: "waiting" | "paused";
   waitingReason?: string;
 };
-export type World = {
+export type World = Lifecycle & {
   objective?: string;
   id: string;
   number: string;

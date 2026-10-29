@@ -1,12 +1,19 @@
 import type { Mission, State, World } from "@/types";
-export const complete = (m: Mission) =>
-  m.tasks.length > 0 && m.tasks.every((t) => t.completed);
+import { missionLifecycle, taskLifecycle, isClosed } from "./lifecycle";
+export const complete = (m: Mission) => missionLifecycle(m) === "completed";
+export const missionClosed = (m: Mission) => missionLifecycle(m) !== "active";
+export const actionable = (m: Mission, s: State) =>
+  !m.archived &&
+  !missionClosed(m) &&
+  !isClosed(s.worlds.find((w) => w.id === m.worldId) || {});
 export const progress = (m: Mission) =>
-  m.tasks.length
-    ? Math.round(
-        (m.tasks.filter((t) => t.completed).length / m.tasks.length) * 100,
-      )
-    : 0;
+  complete(m)
+    ? 100
+    : m.tasks.length
+      ? Math.round(
+          (m.tasks.filter((t) => t.completed).length / m.tasks.length) * 100,
+        )
+      : 0;
 /** Campaign relationships are recommendations, never permission gates. */
 export const worldLocked = (w: World, s: State) =>
   !s.worlds.some((world) => world.id === w.id);
@@ -24,7 +31,8 @@ export const sequenceReady = (m: Mission, s: State) =>
   );
 export function missionStatus(m: Mission, s: State) {
   if (m.archived) return "ARCHIVED";
-  if (complete(m)) return "COMPLETED";
+  if (complete(m)) return "COMPLÉTÉE";
+  if (missionLifecycle(m) === "cancelled") return "ANNULÉE";
   if (m.workState === "waiting") return "WAITING";
   if (m.workState === "paused") return "PAUSED";
   return s.currentId === m.id ? "ACTIVE" : "AVAILABLE";
@@ -58,15 +66,22 @@ export function weighted(ms: Mission[]) {
     : 0;
 }
 export const globalProgress = (s: State) =>
-  weighted(s.missions.filter((m) => !m.archived));
+  weighted(
+    s.missions
+      .filter((m) => !m.archived)
+      .map((m) =>
+        s.worlds.find((w) => w.id === m.worldId)?.status === "completed"
+          ? { ...m, status: "completed" }
+          : m,
+      ),
+  );
 export function suggest(s: State, excludeId?: string) {
   const candidates = s.missions
     .filter(
       (m) =>
         m.id !== excludeId &&
-        !m.archived &&
-        !complete(m) &&
-        m.tasks.some((t) => !t.completed) &&
+        actionable(m, s) &&
+        m.tasks.some((t) => taskLifecycle(t) === "active") &&
         !m.workState &&
         !locked(m, s),
     )
@@ -88,16 +103,15 @@ export function suggest(s: State, excludeId?: string) {
 }
 export function currentMission(s: State) {
   return (
-    s.missions.find(
-      (m) => m.id === s.currentId && !m.archived && !complete(m),
-    ) ||
+    s.missions.find((m) => m.id === s.currentId && actionable(m, s)) ||
     suggest(s) ||
-    s.missions.find((m) => !m.archived && !complete(m))
+    s.missions.find((m) => actionable(m, s))
   );
 }
 export function nextAction(m: Mission | undefined, s: State) {
-  const mission = m?.workState ? suggest(s, m.id) : m;
-  const task = mission?.tasks.find((t) => !t.completed);
+  const mission =
+    m && actionable(m, s) ? (m.workState ? suggest(s, m.id) : m) : undefined;
+  const task = mission?.tasks.find((t) => taskLifecycle(t) === "active");
   return task && mission ? { mission, task } : undefined;
 }
 export function countdown(date: string, now: number) {

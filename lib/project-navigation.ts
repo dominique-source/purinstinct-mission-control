@@ -1,5 +1,12 @@
 import type { State, World } from "@/types";
-import { complete, weighted, nextAction, sequenceReady } from "./engine";
+import {
+  complete,
+  weighted,
+  nextAction,
+  sequenceReady,
+  actionable,
+} from "./engine";
+import { isClosed, statusLabels, taskLifecycle } from "./lifecycle";
 const objectives: Record<string, string> = {
   vanier: "BÂTIR L’ÉCOLE FONDATRICE",
   instinct: "SIGNER L’ENTENTE DE PRODUCTION",
@@ -12,14 +19,16 @@ export const subMissions = (state: State, worldId: string) =>
     .filter((m) => m.worldId === worldId && !m.archived)
     .sort((a, b) => a.order - b.order);
 export const projectProgress = (world: World, state: State) =>
-  weighted(subMissions(state, world.id));
+  world.status === "completed" ? 100 : weighted(subMissions(state, world.id));
 export const projectObjective = (world: World) =>
   world.objective ||
   objectives[world.id] ||
   world.description ||
   world.subtitle;
 export function projectBrowser(state: State) {
-  const projects = [...state.worlds].sort((a, b) => a.order - b.order);
+  const projects = state.worlds
+    .filter((w) => !isClosed(w))
+    .sort((a, b) => a.order - b.order);
   const legacy = state.missions.find((m) => m.id === state.currentId)?.worldId;
   const selected =
     projects.find((w) => w.id === state.activeWorldId) ||
@@ -44,8 +53,8 @@ export function adjacentProject(state: State, delta: number) {
 }
 export function projectStatus(world: World, state: State) {
   const ms = subMissions(state, world.id);
-  if (ms.length && ms.every(complete)) return "COMPLETED";
-  const remaining = ms.filter((m) => !complete(m));
+  if (isClosed(world)) return statusLabels[world.status!];
+  const remaining = ms.filter((m) => actionable(m, state));
   if (remaining.length && remaining.every((m) => m.workState === "waiting"))
     return "WAITING";
   if (remaining.length && remaining.every((m) => m.workState === "paused"))
@@ -55,16 +64,20 @@ export function projectStatus(world: World, state: State) {
     : "AVAILABLE";
 }
 export function projectNextAction(world: World, state: State) {
-  const ms = subMissions(state, world.id);
+  if (isClosed(world)) return undefined;
+  const ms = subMissions(state, world.id).filter((m) => actionable(m, state));
   const focused = ms.find((m) => m.id === state.currentId && !complete(m));
   const action = focused ? nextAction(focused, state) : undefined;
   if (action?.mission.worldId === world.id) return action;
   const candidates = ms.filter(
-    (m) => !complete(m) && !m.workState && m.tasks.some((t) => !t.completed),
+    (m) =>
+      !complete(m) &&
+      !m.workState &&
+      m.tasks.some((t) => taskLifecycle(t) === "active"),
   );
   const mission =
     candidates.find((m) => sequenceReady(m, state)) || candidates[0];
-  const task = mission?.tasks.find((t) => !t.completed);
+  const task = mission?.tasks.find((t) => taskLifecycle(t) === "active");
   return mission && task ? { mission, task } : undefined;
 }
 /** Child focus is independent from the selected primary project, including old v1 saves. */

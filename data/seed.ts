@@ -10,6 +10,7 @@ const m = (
   isBoss = false,
   dueDate?: string,
 ): Mission => ({
+  status: "active",
   id,
   worldId,
   title,

@@ -1,5 +1,20 @@
 import { createSeed } from "@/data/seed";
 import type { State } from "@/types";
+function validLifecycle(item: { status?: unknown; history?: unknown }) {
+  const statuses = ["active", "completed", "cancelled"];
+  return (
+    (item.status === undefined || statuses.includes(item.status as string)) &&
+    (item.history === undefined ||
+      (Array.isArray(item.history) &&
+        item.history.every(
+          (e) =>
+            e &&
+            statuses.includes(e.status) &&
+            typeof e.at === "string" &&
+            Number.isFinite(Date.parse(e.at)),
+        )))
+  );
+}
 export const STORAGE_KEY = "purinstinct-mission-control-v1";
 export function isState(value: unknown): value is State {
   if (!value || typeof value !== "object") return false;
@@ -19,6 +34,7 @@ export function isState(value: unknown): value is State {
     s.worlds.some(
       (w) =>
         !w ||
+        !validLifecycle(w) ||
         typeof w.id !== "string" ||
         typeof w.title !== "string" ||
         typeof w.subtitle !== "string" ||
@@ -38,6 +54,7 @@ export function isState(value: unknown): value is State {
     s.missions.some(
       (m) =>
         !m ||
+        !validLifecycle(m) ||
         typeof m.id !== "string" ||
         typeof m.title !== "string" ||
         typeof m.objective !== "string" ||
@@ -56,6 +73,9 @@ export function isState(value: unknown): value is State {
         m.tasks.some(
           (t) =>
             !t ||
+            !validLifecycle(t) ||
+            (t.status !== undefined &&
+              t.completed !== (t.status === "completed")) ||
             typeof t.id !== "string" ||
             typeof t.title !== "string" ||
             typeof t.completed !== "boolean" ||

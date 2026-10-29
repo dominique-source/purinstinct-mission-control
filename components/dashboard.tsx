@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import {
   ArrowRight,
@@ -22,6 +23,8 @@ import {
   Target,
   ChartNoAxesCombined,
 } from "lucide-react";
+import { isClosed, missionLifecycle } from "@/lib/lifecycle";
+import { actionable } from "@/lib/engine";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
 import { CampaignArt, worldArt } from "./campaign-art";
@@ -71,6 +74,7 @@ export function Progress({
 }
 export function Dashboard() {
   const { state, ready, update } = useStudio();
+  const router = useRouter();
   const heroRef = useRef<HTMLElement>(null);
   const browser = projectBrowser(state);
   const selectMission = (id: string, reveal = false) => {
@@ -106,9 +110,12 @@ export function Dashboard() {
   const missionProgress = current ? projectProgress(current, state) : 0;
   const milestones = ["V1", "V2", "V4", "V3", "F1"]
     .map((id) => state.missions.find((m) => m.id === id))
-    .filter((m) => !!m);
+    .filter((m) => !!m)
+    .filter((m) => actionable(m, state));
   const today = state.missions.find((m) => m.id === "C1");
   const tomorrow = state.missions.find((m) => m.id === "I1");
+  const todayParent = state.worlds.find((w) => w.id === today?.worldId);
+  const tomorrowParent = state.worlds.find((w) => w.id === tomorrow?.worldId);
   return (
     <Shell>
       <div className="campaign-dashboard">
@@ -214,10 +221,12 @@ export function Dashboard() {
                 <div
                   className={`current-mission-title ${(currentWorld?.title.length || 0) > 8 ? "long-world-title" : ""}`}
                 >
-                  {currentWorld?.title || "SEASON COMPLETE"}
+                  {currentWorld?.title || "AUCUNE MISSION ACTIVE"}
                 </div>
                 <h1>
-                  {current ? projectObjective(current) : "LA VISION PREND VIE."}
+                  {current
+                    ? projectObjective(current)
+                    : "CONSULTEZ VOTRE HISTORIQUE."}
                   <ChevronRight size={20} />
                 </h1>
                 <span className="project-hero-status" data-project-status>
@@ -326,7 +335,7 @@ export function Dashboard() {
             return (
               <article
                 key={w.id}
-                className={`world-card campaign-tile project-card ${isCurrent ? "current-world" : ""}`}
+                className={`world-card campaign-tile project-card ${isClosed(w) ? "lifecycle-closed" : ""} ${isCurrent ? "current-world" : ""}`}
                 style={{ "--accent": w.accent } as React.CSSProperties}
                 data-project-card={w.id}
               >
@@ -375,7 +384,7 @@ export function Dashboard() {
                       <li key={m.id}>
                         <Link
                           href={`/mission/${m.id}`}
-                          className="project-submission-link"
+                          className={`project-submission-link ${missionLifecycle(m) !== "active" ? "lifecycle-closed" : ""}`}
                           aria-label={`Ouvrir la sous-mission ${m.id} — ${m.title}`}
                         >
                           <span
@@ -387,7 +396,13 @@ export function Dashboard() {
                             {m.title.charAt(0) +
                               m.title.slice(1).toLocaleLowerCase("fr")}
                           </span>
-                          <strong>{progress(m)}%</strong>
+                          <strong>
+                            {missionLifecycle(m) === "cancelled"
+                              ? "ANNULÉE"
+                              : missionLifecycle(m) === "completed"
+                                ? "COMPLÉTÉE · 100%"
+                                : `${progress(m)}%`}
+                          </strong>
                         </Link>
                       </li>
                     ))}
@@ -422,14 +437,29 @@ export function Dashboard() {
               <Sun size={22} />
               <div>
                 <h2>{state.settings.todayLabel}</h2>
-                <span>PRIORITÉ IMMÉDIATE</span>
+                <span>
+                  {today && actionable(today, state)
+                    ? "PRIORITÉ IMMÉDIATE"
+                    : "HISTORIQUE"}
+                </span>
               </div>
             </header>
-            <Link href="/mission/C1" className="tactical-objective">
+            <Link
+              href="/mission/C1"
+              className={`tactical-objective ${today && !actionable(today, state) ? "lifecycle-closed" : ""}`}
+            >
               <Target size={30} />
               <div>
                 <h3>CLINIQUES / STRIPE</h3>
-                <span>MISSION PRIORITAIRE</span>
+                <span>
+                  {today && actionable(today, state)
+                    ? "MISSION PRIORITAIRE"
+                    : today
+                      ? todayParent && isClosed(todayParent)
+                        ? projectStatus(todayParent, state)
+                        : missionStatus(today, state)
+                      : "HISTORIQUE"}
+                </span>
                 <p>{state.settings.todayGoal}</p>
               </div>
               <strong className="tactical-ring">
@@ -442,14 +472,29 @@ export function Dashboard() {
               <CalendarDays size={22} />
               <div>
                 <h2>{state.settings.nextLabel}</h2>
-                <span>PROCHAINE SÉQUENCE</span>
+                <span>
+                  {tomorrow && actionable(tomorrow, state)
+                    ? "PROCHAINE SÉQUENCE"
+                    : "HISTORIQUE"}
+                </span>
               </div>
             </header>
-            <Link href="/mission/I1" className="tactical-objective">
+            <Link
+              href="/mission/I1"
+              className={`tactical-objective ${tomorrow && !actionable(tomorrow, state) ? "lifecycle-closed" : ""}`}
+            >
               <Radio size={30} />
               <div>
                 <h3>INSTINCT</h3>
-                <span>IMMERSION TOTALE</span>
+                <span>
+                  {tomorrow && actionable(tomorrow, state)
+                    ? "IMMERSION TOTALE"
+                    : tomorrow
+                      ? tomorrowParent && isClosed(tomorrowParent)
+                        ? projectStatus(tomorrowParent, state)
+                        : missionStatus(tomorrow, state)
+                      : "HISTORIQUE"}
+                </span>
                 <p>{state.settings.nextGoal}</p>
               </div>
               <strong className="tactical-ring">
@@ -495,8 +540,13 @@ export function Dashboard() {
                 <button
                   key={w.id}
                   type="button"
-                  onClick={() => selectMission(w.id, true)}
-                  aria-label={`Activer ${w.title} depuis la vue d’ensemble`}
+                  onClick={() =>
+                    isClosed(w)
+                      ? router.push(`/world/${w.id}`)
+                      : selectMission(w.id, true)
+                  }
+                  aria-label={`${isClosed(w) ? "Consulter" : "Activer"} ${w.title} depuis la vue d’ensemble`}
+                  className={isClosed(w) ? "lifecycle-closed" : ""}
                   style={{ "--accent": w.accent } as React.CSSProperties}
                 >
                   <span>
@@ -531,7 +581,11 @@ export function Dashboard() {
           <span>
             <Flame size={12} />
             {streak(state)} JOURS DE STREAK <i />{" "}
-            {state.missions.filter(complete).length} MISSIONS FERMÉES
+            {
+              state.missions.filter((m) => missionLifecycle(m) !== "active")
+                .length
+            }{" "}
+            MISSIONS FERMÉES
           </span>
           <span>OPEN. FOCUS. COMPLETE. REPEAT.</span>
         </div>
