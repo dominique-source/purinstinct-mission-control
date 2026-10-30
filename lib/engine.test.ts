@@ -160,7 +160,7 @@ test("existing v1 progress, notes, completion dates, current mission and custom 
     false,
   );
 });
-test("loading a real legacy localStorage payload is lossless and does not write or reset it", async (t) => {
+test("loading a legacy save adds the requested brief once, preserves originals and saves a backup", async (t) => {
   const { s, v1 } = parallelScenario();
   v1.notes = "Historique utilisateur";
   s.currentId = "V2";
@@ -168,12 +168,14 @@ test("loading a real legacy localStorage payload is lossless and does not write 
   const payload = JSON.stringify(s);
   let written: string | undefined;
   let writes = 0;
+  const storage = new Map([["purinstinct-mission-control-v1", payload]]);
   const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
     value: {
-      getItem: () => payload,
+      getItem: (key: string) => storage.get(key) ?? null,
       setItem: (_key: string, value: string) => {
+        storage.set(_key, value);
         written = value;
         writes++;
       },
@@ -188,8 +190,21 @@ test("loading a real legacy localStorage payload is lossless and does not write 
   t.after(unsubscribe);
   assert.equal(store.getSnapshot().ready, true);
   assert.equal(store.getSnapshot().error, "");
-  assert.deepEqual(store.getSnapshot().state, JSON.parse(payload));
-  assert.equal(writes, 0);
+  assert.deepEqual(
+    store.getSnapshot().state.worlds.slice(0, s.worlds.length),
+    JSON.parse(payload).worlds,
+  );
+  assert.deepEqual(
+    store.getSnapshot().state.missions.slice(0, s.missions.length),
+    JSON.parse(payload).missions,
+  );
+  assert.equal(store.getSnapshot().state.worlds.length, s.worlds.length + 1);
+  const { NEW_SPORT_UPDATE } = await import("../data/new-sport-doc");
+  assert.equal(
+    storage.get(`purinstinct-mission-control-v1-before-${NEW_SPORT_UPDATE}`),
+    payload,
+  );
+  assert.equal(writes, 2);
   store.updateState((state) => ({
     ...state,
     missions: state.missions.map((m) =>
@@ -675,4 +690,101 @@ test("legacy activity defaults preserve saves and reactivation restores active p
   added.worlds = added.worlds.map((w) => transitionProject(w, "completed"));
   assert.equal(projectGroups(added).live.length, 0);
   assert.equal(projectGroups(added).archived.length, 6);
+});
+
+test("New Sport Doc content update is additive, idempotent and keeps casting in its master source", async () => {
+  const { applyNewSportDoc, CASTING_MASTER } =
+    await import("../data/new-sport-doc");
+  const { isState } = await import("./persistence");
+  const base = createSeed();
+  const s = applyNewSportDoc(base);
+  assert.equal(s.worlds.length, 6);
+  assert.equal(s.missions.length, 33);
+  assert.deepEqual(s.worlds.slice(0, 5), base.worlds);
+  assert.deepEqual(s.missions.slice(0, 25), base.missions);
+  const w = s.worlds.find((w) => w.mediaBrief)!;
+  assert.equal(w.status, "active");
+  assert.equal(w.partners, "Éric Boucher");
+  assert.equal(w.mediaBrief!.masterUrl, CASTING_MASTER);
+  assert.deepEqual(
+    w.mediaBrief!.tiers.map((t) => t.count),
+    [13, 7, 26, 25, 15],
+  );
+  assert.equal(
+    w.mediaBrief!.tiers.reduce((sum, t) => sum + t.count, 0),
+    86,
+  );
+  assert.equal(w.mediaBrief!.shortlist, "");
+  assert.equal(w.mediaBrief!.principles.length, 10);
+  const ms = w.mediaBrief!.milestoneIds.map((id) =>
+    s.missions.find((m) => m.id === id)!,
+  );
+  assert.equal(ms.filter((m) => m.planningState === "in_progress").length, 3);
+  assert.equal(ms.filter((m) => m.planningState === "upcoming").length, 4);
+  assert.equal(ms.filter((m) => m.planningState === "someday").length, 1);
+  assert.equal(ms[0].owner, "Dominique Soucy");
+  assert.equal(ms[1].owner, "Éric Boucher");
+  assert.equal(applyNewSportDoc(s), s);
+  const { projectProgress } = await import("./project-navigation");
+  const worked = {
+    ...s,
+    missions: s.missions.map((m) =>
+      m.id === ms[0].id ? { ...m, status: "completed" as const } : m,
+    ),
+  };
+  assert.equal(projectProgress(w, worked), 13);
+  assert.equal(totalXp(worked), totalXp(s));
+  const saved = JSON.parse(JSON.stringify(s));
+  assert.equal(isState(saved), true);
+  saved.worlds[5].mediaBrief.shortlist = "Sélection après révision";
+  saved.worlds[5].status = "completed";
+  assert.equal(applyNewSportDoc(saved), saved);
+  assert.equal(saved.worlds[5].status, "completed");
+  saved.worlds[5].mediaBrief.tiers[0].count = -1;
+  assert.equal(isState(saved), false);
+});
+
+test("New Sport Doc reuses an existing dynamic mission and matching milestone without losing user data", async () => {
+  const { applyNewSportDoc } = await import("../data/new-sport-doc");
+  const s = createSeed();
+  const original = {
+    ...s.worlds[0],
+    id: "custom-123",
+    title: "New Sport Doc",
+    status: "cancelled" as const,
+    notes: "Notes personnelles",
+    links: "https://example.com/deck",
+    manualProgress: 35,
+  };
+  s.worlds.push(original);
+  const casting = {
+    ...s.missions[0],
+    id: "custom-casting",
+    worldId: original.id,
+    title: "Casting initial",
+    notes: "À revoir avec Éric",
+    tasks: [
+      { id: "custom-task", title: "Action existante", completed: true, xp: 42 },
+    ],
+  };
+  s.missions.push(casting);
+  const copy = JSON.stringify(s);
+  const updated = applyNewSportDoc(s);
+  assert.equal(JSON.stringify(s), copy);
+  assert.equal(updated.worlds.length, 6);
+  const w = updated.worlds.find((w) => w.id === original.id)!;
+  assert.equal(w.notes, original.notes);
+  assert.equal(w.links, original.links);
+  assert.equal(w.manualProgress, 35);
+  assert.equal(w.status, "active");
+  assert.equal(w.history?.at(-1)?.status, "active");
+  assert.equal(w.mediaBrief!.milestoneIds[0], casting.id);
+  const existing = updated.missions.find((m) => m.id === casting.id)!;
+  assert.deepEqual(existing.tasks, casting.tasks);
+  assert.equal(existing.notes, casting.notes);
+  assert.equal(
+    updated.missions.filter((m) => m.worldId === original.id).length,
+    8,
+  );
+  assert.equal(applyNewSportDoc(updated), updated);
 });

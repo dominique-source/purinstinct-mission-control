@@ -1,5 +1,6 @@
 import { createSeed } from "@/data/seed";
-import type { State } from "@/types";
+import { applyNewSportDoc, NEW_SPORT_UPDATE } from "@/data/new-sport-doc";
+import type { MediaBrief, State } from "@/types";
 function validLifecycle(item: { status?: unknown; history?: unknown }) {
   const statuses = ["active", "completed", "cancelled"];
   return (
@@ -15,12 +16,57 @@ function validLifecycle(item: { status?: unknown; history?: unknown }) {
         )))
   );
 }
+function validMediaBrief(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const b = value as MediaBrief;
+  return (
+    b.version === 1 &&
+    typeof b.masterUrl === "string" &&
+    typeof b.shortlist === "string" &&
+    [b.milestoneIds, b.objectives, b.principles].every(
+      (a) => Array.isArray(a) && a.every((v) => typeof v === "string"),
+    ) &&
+    Array.isArray(b.tiers) &&
+    b.tiers.every(
+      (t) =>
+        t &&
+        typeof t.name === "string" &&
+        typeof t.label === "string" &&
+        typeof t.description === "string" &&
+        Number.isInteger(t.count) &&
+        t.count >= 0,
+    ) &&
+    Array.isArray(b.roles) &&
+    b.roles.every(
+      (r) => r && typeof r.name === "string" && typeof r.details === "string",
+    ) &&
+    Array.isArray(b.resources) &&
+    b.resources.every(
+      (r) =>
+        r &&
+        typeof r.title === "string" &&
+        typeof r.status === "string" &&
+        typeof r.url === "string",
+    ) &&
+    Array.isArray(b.activity) &&
+    b.activity.every(
+      (e) =>
+        e &&
+        typeof e.text === "string" &&
+        typeof e.at === "string" &&
+        Number.isFinite(Date.parse(e.at)),
+    )
+  );
+}
 export const STORAGE_KEY = "purinstinct-mission-control-v1";
 export function isState(value: unknown): value is State {
   if (!value || typeof value !== "object") return false;
   const s = value as State;
   if (
     s.version !== 1 ||
+    (s.contentUpdates !== undefined &&
+      (!Array.isArray(s.contentUpdates) ||
+        s.contentUpdates.some((v) => typeof v !== "string"))) ||
     !Array.isArray(s.worlds) ||
     !Array.isArray(s.missions) ||
     !Array.isArray(s.finalChecklist) ||
@@ -35,6 +81,7 @@ export function isState(value: unknown): value is State {
       (w) =>
         !w ||
         !validLifecycle(w) ||
+        (w.mediaBrief !== undefined && !validMediaBrief(w.mediaBrief)) ||
         (w.availability !== undefined &&
           w.availability !== "available" &&
           w.availability !== "waiting") ||
@@ -70,6 +117,11 @@ export function isState(value: unknown): value is State {
       (m) =>
         !m ||
         !validLifecycle(m) ||
+        (m.owner !== undefined && typeof m.owner !== "string") ||
+        (m.planningState !== undefined &&
+          !["in_progress", "upcoming", "someday", "review_ready"].includes(
+            m.planningState,
+          )) ||
         typeof m.id !== "string" ||
         typeof m.title !== "string" ||
         typeof m.objective !== "string" ||
@@ -100,6 +152,18 @@ export function isState(value: unknown): value is State {
     )
   )
     return false;
+  if (
+    s.worlds.some(
+      (w) =>
+        w.mediaBrief &&
+        (new Set(w.mediaBrief.milestoneIds).size !==
+          w.mediaBrief.milestoneIds.length ||
+          w.mediaBrief.milestoneIds.some(
+            (id) => !s.missions.some((m) => m.id === id && m.worldId === w.id),
+          )),
+    )
+  )
+    return false;
   const defaults = createSeed().settings;
   if (
     Object.keys(defaults).some(
@@ -115,7 +179,7 @@ export function isState(value: unknown): value is State {
 }
 type Snapshot = { state: State; ready: boolean; error: string };
 const serverSnapshot: Snapshot = {
-  state: createSeed(),
+  state: applyNewSportDoc(createSeed()),
   ready: false,
   error: "",
 };
@@ -131,14 +195,21 @@ export function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!initialized) {
     initialized = true;
-    let state = createSeed(),
+    let state = applyNewSportDoc(createSeed()),
       error = "";
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data: unknown = JSON.parse(raw);
-        if (isState(data)) state = data;
-        else
+        if (isState(data)) {
+          state = applyNewSportDoc(data);
+          if (state !== data) {
+            const backupKey = `${STORAGE_KEY}-before-${NEW_SPORT_UPDATE}`;
+            if (!localStorage.getItem(backupKey))
+              localStorage.setItem(backupKey, raw);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          }
+        } else
           error =
             "Sauvegarde invalide : données initiales affichées. Le fichier existant est conservé.";
       }
@@ -154,7 +225,7 @@ export function subscribe(listener: () => void) {
   };
 }
 export function updateState(fn: (s: State) => State) {
-  const state = fn(snapshot.state);
+  const state = applyNewSportDoc(fn(snapshot.state));
   let error = "";
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));

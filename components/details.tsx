@@ -14,6 +14,7 @@ import {
   Trophy,
   Download,
 } from "lucide-react";
+import { NewSportMission, planningLabels } from "./new-sport-mission";
 import { ProjectEditor } from "./project-editor";
 import { LifecycleControls } from "./lifecycle-controls";
 import {
@@ -61,6 +62,7 @@ export function WorldDetail({ id }: { id: string }) {
         <h1>World introuvable</h1>
       </Shell>
     );
+  if (w.mediaBrief) return <NewSportMission world={w} />;
   const ms = state.missions
     .filter((m) => m.worldId === id && !m.archived)
     .sort((a, b) => a.order - b.order);
@@ -286,6 +288,12 @@ export function MissionDetail({ id }: { id: string }) {
           <span className="tag">{missionStatus(m, state)}</span>
         </div>
         <h1 className="mission-title">{m.title}</h1>
+        {(m.owner || m.planningState) && (
+          <div className="project-metadata">
+            {m.owner && <span>Responsable : {m.owner}</span>}
+            {m.planningState && <span>{planningLabels[m.planningState]}</span>}
+          </div>
+        )}
         <div className="detail-actions">
           <span className="reward">
             <Zap size={17} />
@@ -352,7 +360,7 @@ export function MissionDetail({ id }: { id: string }) {
             <h2>OBJECTIF</h2>
             <p>{m.objective}</p>
             <div className="eyebrow spaced">POURQUOI C’EST IMPORTANT</div>
-            <p>{w.description}</p>
+            <p>{w.description || projectObjective(w)}</p>
           </section>
           <section className="panel">
             <div className="section-heading compact">
@@ -652,6 +660,33 @@ function MissionFields({
           onChange={(e) => onChange({ objective: e.target.value })}
         />
       </label>
+      {m.planningState && (
+        <>
+          <label>
+            Responsable
+            <input
+              value={m.owner || ""}
+              onChange={(e) => onChange({ owner: e.target.value })}
+            />
+          </label>
+          <label>
+            État du milestone
+            <select
+              value={m.planningState}
+              onChange={(e) =>
+                onChange({
+                  planningState: e.target.value as Mission["planningState"],
+                })
+              }
+            >
+              <option value="in_progress">EN COURS</option>
+              <option value="review_ready">PRÊT POUR RÉVISION</option>
+              <option value="upcoming">À VENIR</option>
+              <option value="someday">UN JOUR 😄</option>
+            </select>
+          </label>
+        </>
+      )}
       <label>
         Bonus XP
         <input

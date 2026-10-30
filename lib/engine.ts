@@ -63,7 +63,9 @@ export function weighted(ms: Mission[]) {
   const weight = ms.reduce((a, m) => a + m.xpReward, 0);
   return weight
     ? Math.round(ms.reduce((a, m) => a + progress(m) * m.xpReward, 0) / weight)
-    : 0;
+    : ms.length
+      ? Math.round(ms.reduce((sum, m) => sum + progress(m), 0) / ms.length)
+      : 0;
 }
 export const globalProgress = (s: State) => {
   const worlds = s.worlds.map((w) => ({

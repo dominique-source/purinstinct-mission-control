@@ -1,3 +1,15 @@
+export type MediaBrief = {
+  version: 1;
+  milestoneIds: string[];
+  masterUrl: string;
+  shortlist: string;
+  objectives: string[];
+  tiers: { name: string; label: string; count: number; description: string }[];
+  roles: { name: string; details: string }[];
+  principles: string[];
+  resources: { title: string; status: string; url: string }[];
+  activity: { at: string; text: string }[];
+};
 export type LifecycleStatus = "active" | "completed" | "cancelled";
 export type Lifecycle = {
   status?: LifecycleStatus;
@@ -12,6 +24,8 @@ export type Task = Lifecycle & {
   custom?: boolean;
 };
 export type Mission = Lifecycle & {
+  owner?: string;
+  planningState?: "in_progress" | "upcoming" | "someday" | "review_ready";
   id: string;
   worldId: string;
   title: string;
@@ -30,6 +44,7 @@ export type Mission = Lifecycle & {
   waitingReason?: string;
 };
 export type World = Lifecycle & {
+  mediaBrief?: MediaBrief;
   availability?: "available" | "waiting";
   partners?: string;
   projectType?: string;
@@ -62,6 +77,7 @@ export type Settings = {
   funding: number;
 };
 export type State = {
+  contentUpdates?: string[];
   version: 1;
   worlds: World[];
   missions: Mission[];
