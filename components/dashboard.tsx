@@ -79,6 +79,7 @@ export function Progress({
 export function Dashboard() {
   const { state, ready, update } = useStudio();
   const router = useRouter();
+  const [missionPage, setMissionPage] = useState(0);
   const [previewId, setPreviewId] = useState<string>();
   const heroRef = useRef<HTMLElement>(null);
   const baseBrowser = projectBrowser(state);
@@ -139,6 +140,13 @@ export function Dashboard() {
   const todayParent = state.worlds.find((w) => w.id === today?.worldId);
   const tomorrowParent = state.worlds.find((w) => w.id === tomorrow?.worldId);
   const groups = projectGroups(state);
+  const pageSize = 10;
+  const pageCount = Math.ceil(groups.live.length / pageSize);
+  const visiblePage = Math.min(missionPage, Math.max(0, pageCount - 1));
+  const visibleMissions = groups.live.slice(
+    visiblePage * pageSize,
+    (visiblePage + 1) * pageSize,
+  );
   const renderProjectCard = (w: World) => {
     const ms = subMissions(state, w.id);
     const value = projectProgress(w, state);
@@ -461,13 +469,41 @@ export function Dashboard() {
             </div>
           </header>
           {groups.live.length ? (
-            <div
-              className="world-grid campaign-worlds mission-live-row"
-              role="group"
-              aria-label="Missions actives puis disponibles"
-            >
-              {groups.live.map(renderProjectCard)}
-            </div>
+            <>
+              <div
+                className="world-grid campaign-worlds mission-live-row"
+                role="group"
+                aria-label="Missions actives puis disponibles"
+              >
+                {visibleMissions.map(renderProjectCard)}
+              </div>
+              {pageCount > 1 && (
+                <nav
+                  className="mission-grid-pagination"
+                  aria-label="Pages des missions ouvertes"
+                >
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={visiblePage === 0}
+                    onClick={() => setMissionPage(visiblePage - 1)}
+                  >
+                    Précédent
+                  </button>
+                  <span aria-live="polite">
+                    Page {visiblePage + 1} / {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={visiblePage + 1 >= pageCount}
+                    onClick={() => setMissionPage(visiblePage + 1)}
+                  >
+                    Suivant
+                  </button>
+                </nav>
+              )}
+            </>
           ) : (
             <p className="mission-empty-row">
               Aucune mission en cours. Vous pouvez créer ou réactiver une

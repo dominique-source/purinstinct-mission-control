@@ -3696,7 +3696,9 @@
   margin-top: 22px;
 }
 .project-card .tile-top h2 {
+  white-space: normal;
   overflow-wrap: anywhere;
+  line-height: 1.05;
 }
 @media (max-width: 650px) {
   .new-project-dialog {
@@ -3769,8 +3771,8 @@
   font-weight: 700;
 }
 .campaign-app .mission-live-row {
-  align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-items: stretch;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .campaign-app .mission-live-row .project-active {
   opacity: 1;
@@ -4718,5 +4720,32 @@ a.briefing-project:hover {
   }
   .campaign-dashboard .stage-slogan {
     top: 54px;
+  }
+}
+
+.mission-grid-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block: 16px;
+}
+
+@media (max-width: 1199px) {
+  .campaign-app .mission-live-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 850px) {
+  .campaign-app .mission-live-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .campaign-app .mission-live-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
