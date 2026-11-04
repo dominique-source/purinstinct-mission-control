@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 145">
+<defs><radialGradient id="bg"><stop stop-color="#354759"/><stop offset="1" stop-color="#050912"/></radialGradient><linearGradient id="case" x2="1" y2="1"><stop stop-color="#566271"/><stop offset="1" stop-color="#0e1722"/></linearGradient><pattern id="keys" width="19" height="15" patternUnits="userSpaceOnUse"><rect x="2" y="2" width="15" height="11" rx="3" fill="#152132" stroke="#667185"/><path d="M8 7h4" stroke="#a5acb8" stroke-width="1"/></pattern></defs>
+<path fill="url(#bg)" d="M0 0h160v145H0z"/>
+<g transform="translate(95 73) rotate(25) skewX(-12)">
+<rect x="-39" y="-49" width="86" height="113" rx="10" fill="#03070c" stroke="#202b3a" stroke-width="3"/>
+<rect x="-43" y="-54" width="86" height="113" rx="10" fill="url(#case)" stroke="#647181"/>
+<rect x="-33" y="-43" width="66" height="24" rx="3" fill="#15262c" stroke="#647c83"/>
+<path d="M10-30h16" stroke="#6b9092" stroke-width="3"/>
+<rect x="-36" y="-13" width="74" height="64" fill="url(#keys)"/>
+<rect x="22" y="-11" width="15" height="11" rx="3" fill="#74633e" stroke="#a89462"/>
+</g></svg>

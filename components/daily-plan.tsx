@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import {
+  CalendarDays,
+  ChevronDown,
+  ClipboardList,
+  Clock3,
+  Pencil,
+} from "lucide-react";
 import { useStudio } from "./provider";
 import {
   importDailyPlan,
@@ -16,6 +24,7 @@ export function DailyPlan() {
   const { state, update, ready } = useStudio();
   const [today, setToday] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [archivesOpen, setArchivesOpen] = useState(false);
   const [editing, setEditing] = useState<DailyAction | null>(null);
   const [raw, setRaw] = useState("");
   const [preview, setPreview] = useState<DailyAction[] | null>(null);
@@ -106,126 +115,179 @@ export function DailyPlan() {
     });
   }
   return (
-    <section className="panel daily-plan" aria-labelledby="daily-plan-heading">
-      <h2 id="daily-plan-heading">PLAN DE MATCH — AUJOURD’HUI</h2>
-      {today && (
-        <p>
-          {new Intl.DateTimeFormat("fr-CA", {
-            dateStyle: "full",
-            timeZone: "America/Toronto",
-          }).format(new Date(today + "T16:00:00Z"))}
+    <section className="daily-plan" aria-labelledby="daily-plan-heading">
+      <header className="briefing-header">
+        <ClipboardList className="briefing-icon" aria-hidden="true" />
+        <h2 id="daily-plan-heading">Briefing quotidien</h2>
+        <p className="briefing-date">
+          Plan de match
+          {date &&
+            ` — ${new Intl.DateTimeFormat("fr-CA", {
+              dateStyle: "full",
+              timeZone: "America/Toronto",
+            }).format(new Date(date + "T16:00:00Z"))}`}
         </p>
-      )}
-      <form
-        className="daily-date"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const requested = new FormData(e.currentTarget).get("date");
-          if (validDay(requested)) {
-            setSelectedDate(requested);
-            setEditing(null);
-          }
-        }}
-      >
-        <label>
-          Consulter une journée{" "}
-          <input
-            key={date}
-            type="date"
-            name="date"
-            defaultValue={date}
-            required
-          />
-        </label>
-        <button type="submit" className="button secondary">
-          Afficher
-        </button>
-      </form>
-      {selectedDate && selectedDate !== today && (
+        <span className="briefing-count">
+          {actions.length} {actions.length === 1 ? "objectif" : "objectifs"}
+        </span>
         <button
           type="button"
-          className="button secondary"
-          onClick={() => {
-            setSelectedDate("");
-            setEditing(null);
+          className="briefing-archives"
+          aria-expanded={archivesOpen}
+          aria-controls="briefing-archive-tools"
+          onClick={() => setArchivesOpen(!archivesOpen)}
+        >
+          <Clock3 size={17} aria-hidden="true" /> Archives
+        </button>
+      </header>
+      <div id="briefing-archive-tools" hidden={!archivesOpen}>
+        <form
+          className="daily-date"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const requested = new FormData(e.currentTarget).get("date");
+            if (validDay(requested)) {
+              setSelectedDate(requested);
+              setEditing(null);
+            }
           }}
         >
-          Revenir à aujourd’hui
-        </button>
-      )}
+          <label>
+            Consulter une journée{" "}
+            <input
+              key={date}
+              type="date"
+              name="date"
+              defaultValue={date}
+              required
+            />
+          </label>
+          <button type="submit" className="button secondary">
+            Afficher
+          </button>
+        </form>
+        {selectedDate && selectedDate !== today && (
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              setSelectedDate("");
+              setEditing(null);
+            }}
+          >
+            Revenir à aujourd’hui
+          </button>
+        )}
+      </div>
       {ready && date && (
         <ol className="daily-actions">
-          {actions.map((action) => (
-            <li key={action.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={action.status === "done"}
-                  onChange={(e) =>
-                    changeStatus(action, e.target.checked ? "done" : "todo")
-                  }
-                />{" "}
-                <strong>{action.title}</strong>
-              </label>
-              {action.detail && <p>{action.detail}</p>}
-              {action.worldId &&
-                state.worlds.some((w) => w.id === action.worldId) && (
-                  <Link href={`/world/${action.worldId}`}>
-                    {state.worlds.find((w) => w.id === action.worldId)?.title}
-                  </Link>
-                )}
-              <div className="daily-actions-controls">
-                <select
-                  aria-label={`Statut de ${action.title}`}
-                  value={action.status}
-                  onChange={(e) =>
-                    changeStatus(
-                      action,
-                      e.target.value as DailyAction["status"],
-                    )
-                  }
-                >
-                  <option value="todo">À faire</option>
-                  <option value="done">Fait</option>
-                  <option value="waiting">En attente</option>
-                </select>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setEditing(action)}
-                >
-                  Modifier
-                </button>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => defer(action)}
-                >
-                  Reporter au lendemain
-                </button>
-              </div>
-              {!!action.history.length && (
-                <details>
-                  <summary>Historique</summary>
-                  <ul>
-                    {action.history.map((event, i) => (
-                      <li key={i}>
-                        {new Date(event.at).toLocaleString("fr-CA", {
-                          timeZone: "America/Toronto",
-                        })}{" "}
-                        ·{" "}
-                        {event.event === "deferred"
-                          ? `Report du ${event.from} au ${event.to}`
-                          : event.event === "done"
-                            ? "Fait"
-                            : "Rouvert"}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </li>
-          ))}
+          {actions.map((action, index) => {
+            const project = state.worlds.find((w) => w.id === action.worldId);
+            const art =
+              action.id === "briefing-20261104-doc"
+                ? "/images/briefing/document.svg"
+                : action.id === "briefing-20261104-costs"
+                  ? "/images/briefing/calculator.svg"
+                  : action.id === "briefing-20261104-meetings"
+                    ? "/images/vanier.webp"
+                    : action.id === "briefing-20261104-setup"
+                      ? "/images/briefing/computer.svg"
+                      : [
+                          "/images/briefing/document.svg",
+                          "/images/briefing/calculator.svg",
+                          "/images/vanier.webp",
+                          "/images/briefing/computer.svg",
+                        ][index % 4];
+            return (
+              <li className="briefing-card" key={action.id}>
+                <div className="briefing-art">
+                  <Image src={art} alt="" fill sizes="160px" />
+                  <input
+                    type="checkbox"
+                    aria-label={action.title}
+                    checked={action.status === "done"}
+                    onChange={(e) =>
+                      changeStatus(action, e.target.checked ? "done" : "todo")
+                    }
+                  />
+                </div>
+                <div className="briefing-card-content">
+                  <span className="briefing-number">
+                    Objectif {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3>{action.title}</h3>
+                  <div className="briefing-status" data-status={action.status}>
+                    <select
+                      aria-label={`Statut de ${action.title}`}
+                      value={action.status}
+                      onChange={(e) =>
+                        changeStatus(
+                          action,
+                          e.target.value as DailyAction["status"],
+                        )
+                      }
+                    >
+                      <option value="todo">À faire</option>
+                      <option value="done">Fait</option>
+                      <option value="waiting">En attente</option>
+                    </select>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </div>
+                  {action.detail && (
+                    <p className="briefing-description">{action.detail}</p>
+                  )}
+                  <div className="briefing-card-footer">
+                    {project ? (
+                      <Link
+                        className="briefing-project"
+                        href={`/world/${project.id}`}
+                      >
+                        {project.title}
+                      </Link>
+                    ) : (
+                      <span className="briefing-project">
+                        {action.id === "briefing-20261104-meetings"
+                          ? "Suivis du jour"
+                          : "Mission Control"}
+                      </span>
+                    )}
+                    <div className="briefing-card-actions">
+                      <button type="button" onClick={() => setEditing(action)}>
+                        <Pencil size={14} aria-hidden="true" /> Modifier
+                      </button>
+                      <button
+                        type="button"
+                        title="Reporter au lendemain"
+                        onClick={() => defer(action)}
+                      >
+                        <CalendarDays size={15} aria-hidden="true" /> Reporter
+                      </button>
+                    </div>
+                  </div>
+                  {!!action.history.length && (
+                    <details>
+                      <summary>Historique</summary>
+                      <ul>
+                        {action.history.map((event, i) => (
+                          <li key={i}>
+                            {new Date(event.at).toLocaleString("fr-CA", {
+                              timeZone: "America/Toronto",
+                            })}{" "}
+                            ·{" "}
+                            {event.event === "deferred"
+                              ? `Report du ${event.from} au ${event.to}`
+                              : event.event === "done"
+                                ? "Fait"
+                                : "Rouvert"}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
       {ready && !!deferred.length && (
@@ -441,7 +503,9 @@ export function DailyPlan() {
           )}
         </details>
       )}
-      <p role="status">{message}</p>
+      <p className="briefing-message" role="status">
+        {message}
+      </p>
     </section>
   );
 }

@@ -240,7 +240,6 @@ export function Dashboard() {
   };
   return (
     <Shell>
-      <DailyPlan />
       <div className="campaign-dashboard">
         <NewProject onCreated={() => setPreviewId(undefined)} />
         <section
@@ -440,6 +439,7 @@ export function Dashboard() {
             </Link>
           </section>
         </section>
+        <DailyPlan />
         <div className="mobile-xp-strip">
           <Zap size={22} />
           <strong>{xp.toLocaleString("fr-CA")} XP</strong>
