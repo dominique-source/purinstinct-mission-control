@@ -6,11 +6,13 @@ export function LifecycleControls({
   label,
   onChange,
   activeLabel,
+  readOnly = false,
 }: {
   activeLabel?: string;
   item: Lifecycle;
   label: string;
-  onChange: (status: LifecycleStatus) => void;
+  onChange?: (status: LifecycleStatus) => void;
+  readOnly?: boolean;
 }) {
   return (
     <div
@@ -23,32 +25,33 @@ export function LifecycleControls({
           ? activeLabel
           : statusLabels[item.status || "active"]}
       </span>
-      {isClosed(item) ? (
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => onChange("active")}
-        >
-          Réactiver
-        </button>
-      ) : (
-        <>
+      {!readOnly &&
+        (isClosed(item) ? (
           <button
             type="button"
             className="button secondary"
-            onClick={() => onChange("completed")}
+            onClick={() => onChange?.("active")}
           >
-            Marquer comme complétée
+            Réactiver
           </button>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => onChange("cancelled")}
-          >
-            Marquer comme annulée
-          </button>
-        </>
-      )}
+        ) : (
+          <>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => onChange?.("completed")}
+            >
+              Marquer comme complétée
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => onChange?.("cancelled")}
+            >
+              Marquer comme annulée
+            </button>
+          </>
+        ))}
       {!!item.history?.length && (
         <details className="lifecycle-history">
           <summary>Historique ({item.history.length})</summary>

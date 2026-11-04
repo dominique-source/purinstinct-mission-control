@@ -437,6 +437,20 @@ export function NewSportMission({ world: w }: { world: World }) {
         </section>
         <section className="media-panel" aria-labelledby="media-history-title">
           <h2 id="media-history-title">HISTORIQUE / ACTIVITÉ</h2>
+          {state.briefingMediaWorldId === w.id && (
+            <div className="media-resource">
+              <h3>3 novembre 2026</h3>
+              <p>
+                Rencontre positive d’environ deux heures avec Éric Boucher.
+                Réorganisation du Casting Master / Dream Team effectuée par
+                Dominique et confirmée par texto.
+              </p>
+              <p>
+                Prochaine rencontre à planifier dans les prochains jours, par
+                Zoom ou à Magog.
+              </p>
+            </div>
+          )}
           {activity.length ? (
             <ul className="media-activity">
               {activity.map((e, i) => (

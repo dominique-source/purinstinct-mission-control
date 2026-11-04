@@ -1,8 +1,11 @@
+import { FUNDING_ID } from "@/data/briefing-update";
 import type { Mission, State, World } from "@/types";
 import { missionLifecycle, taskLifecycle, isClosed } from "./lifecycle";
 export const complete = (m: Mission) => missionLifecycle(m) === "completed";
 export const missionClosed = (m: Mission) => missionLifecycle(m) !== "active";
 export const actionable = (m: Mission, s: State) =>
+  (m.worldId !== FUNDING_ID ||
+    s.worlds.some((w) => w.id === FUNDING_ID && !w.availability)) &&
   !m.archived &&
   !missionClosed(m) &&
   !isClosed(s.worlds.find((w) => w.id === m.worldId) || {});
@@ -21,7 +24,10 @@ export const locked = (m: Mission, s: State) =>
   !s.worlds.some((world) => world.id === m.worldId);
 export const recommendedAfter = (m: Mission, s: State) => [
   ...new Set([
-    ...(s.worlds.find((w) => w.id === m.worldId)?.unlockConditions || []),
+    ...((m.vanierFunding
+      ? s.archivedVanierFunding
+      : s.worlds.find((w) => w.id === m.worldId)
+    )?.unlockConditions || []),
     ...m.dependencies,
   ]),
 ];

@@ -190,15 +190,18 @@ test("loading a legacy save adds the requested brief once, preserves originals a
   t.after(unsubscribe);
   assert.equal(store.getSnapshot().ready, true);
   assert.equal(store.getSnapshot().error, "");
+  const migrated = store.getSnapshot().state;
   assert.deepEqual(
-    store.getSnapshot().state.worlds.slice(0, s.worlds.length),
-    JSON.parse(payload).worlds,
+    migrated.worlds.filter((w) =>
+      ["vanier", "instinct", "cliniques", "technologie"].includes(w.id),
+    ),
+    JSON.parse(payload).worlds.slice(0, 4),
   );
   assert.deepEqual(
-    store.getSnapshot().state.missions.slice(0, s.missions.length),
-    JSON.parse(payload).missions,
+    migrated.missions.filter((m) => !m.vanierFunding).slice(0, 18),
+    JSON.parse(payload).missions.slice(0, 18),
   );
-  assert.equal(store.getSnapshot().state.worlds.length, s.worlds.length + 1);
+  assert.equal(migrated.worlds.length, s.worlds.length + 1);
   const { NEW_SPORT_UPDATE } = await import("../data/new-sport-doc");
   assert.equal(
     storage.get(`purinstinct-mission-control-v1-before-${NEW_SPORT_UPDATE}`),
@@ -787,4 +790,109 @@ test("New Sport Doc reuses an existing dynamic mission and matching milestone wi
     8,
   );
   assert.equal(applyNewSportDoc(updated), updated);
+});
+
+test("briefing migration preserves Vanier funding data and keeps Funding 750K out of suggestions until activated", async () => {
+  const { applyBriefingUpdate, FUNDING_ID } =
+    await import("../data/briefing-update");
+  const { changeProjectActivity, projectNextAction } =
+    await import("./project-navigation");
+  const { isState } = await import("./persistence");
+  const original = createSeed();
+  original.activeWorldId = "financement";
+  original.settings.funding = 20000;
+  const f1 = original.missions.find((m) => m.id === "F1")!;
+  f1.tasks[0].completed = true;
+  f1.notes = "Notes à conserver";
+  const migrated = applyBriefingUpdate(original);
+  assert.equal(isState(migrated), true);
+  assert.equal(
+    applyBriefingUpdate(JSON.parse(JSON.stringify(migrated))).missions.length,
+    migrated.missions.length,
+  );
+  assert.equal(
+    migrated.worlds.some((w) => w.id === "financement"),
+    false,
+  );
+  assert.equal(migrated.activeWorldId, "vanier");
+  const moved = migrated.missions.filter((m) => m.vanierFunding);
+  assert.equal(moved.length, 7);
+  assert.ok(moved.every((m) => m.worldId === "vanier"));
+  assert.deepEqual(moved[0].tasks, f1.tasks);
+  assert.equal(moved[0].notes, f1.notes);
+  assert.deepEqual(moved[0].dependencies, f1.dependencies);
+  assert.equal(totalXp(migrated), totalXp(original));
+  assert.equal(migrated.settings.funding, 20000);
+  assert.equal(migrated.dailyActions?.length, 4);
+  assert.ok(migrated.dailyActions?.every((a) => a.status === "todo"));
+  const funding = migrated.worlds.find((w) => w.id === FUNDING_ID)!;
+  assert.equal(funding.availability, "available");
+  assert.equal(projectNextAction(funding, migrated), undefined);
+  const activated = changeProjectActivity(migrated, FUNDING_ID, "active");
+  assert.ok(
+    projectNextAction(
+      activated.worlds.find((w) => w.id === FUNDING_ID)!,
+      activated,
+    ),
+  );
+});
+
+test("daily plan import is bounded and idempotent, retaining checked actions and history", async () => {
+  const { importDailyPlan, mergeDailyActions, torontoDay, nextDay } =
+    await import("./daily-plan");
+  const original = createSeed();
+  const imported = importDailyPlan(
+    JSON.stringify({
+      date: "2026-11-04",
+      actions: [
+        {
+          id: "x",
+          title: "Préparer le document",
+          worldId: "vanier",
+          status: "done",
+        },
+      ],
+    }),
+  );
+  assert.equal(imported[0].status, "todo");
+  const saved = {
+    ...imported[0],
+    status: "done" as const,
+    history: [{ at: "2026-11-04T18:00:00Z", event: "done" as const }],
+  };
+  assert.deepEqual(
+    mergeDailyActions({ ...original, dailyActions: [saved] }, imported),
+    [saved],
+  );
+  assert.deepEqual(
+    mergeDailyActions({ ...original, dailyActions: [saved] }, [
+      { ...imported[0], id: "different" },
+    ]),
+    [saved],
+  );
+  assert.throws(
+    () =>
+      mergeDailyActions(original, [
+        { ...imported[0], title: original.missions[0].tasks[0].title },
+      ]),
+    /existe déjà/,
+  );
+  assert.throws(() => importDailyPlan('{"date":"2026-02-30","actions":[]}'));
+  assert.throws(
+    () =>
+      mergeDailyActions(
+        {
+          ...original,
+          dailyActions: Array.from({ length: 4 }, (_, i) => ({
+            ...saved,
+            id: String(i),
+            title: String(i),
+          })),
+        },
+        imported,
+      ),
+    /quatre/,
+  );
+  assert.equal(torontoDay(new Date("2026-11-05T02:00:00Z")), "2026-11-04");
+  assert.equal(nextDay("2026-12-31"), "2027-01-01");
 });

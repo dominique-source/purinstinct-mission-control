@@ -26,6 +26,7 @@ import {
 import { isClosed, missionLifecycle } from "@/lib/lifecycle";
 import { actionable } from "@/lib/engine";
 import type { World } from "@/types";
+import { DailyPlan } from "./daily-plan";
 import { NewProject } from "./new-project";
 import { useStudio } from "./provider";
 import { Shell } from "./shell";
@@ -239,6 +240,7 @@ export function Dashboard() {
   };
   return (
     <Shell>
+      <DailyPlan />
       <div className="campaign-dashboard">
         <NewProject onCreated={() => setPreviewId(undefined)} />
         <section

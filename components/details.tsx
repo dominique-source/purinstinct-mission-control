@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,6 +15,7 @@ import {
   Download,
 } from "lucide-react";
 import { NewSportMission, planningLabels } from "./new-sport-mission";
+import { schools } from "@/data/briefing-update";
 import { ProjectEditor } from "./project-editor";
 import { LifecycleControls } from "./lifecycle-controls";
 import {
@@ -34,6 +35,7 @@ import {
   missionStatus,
   nextAction,
   missionXp,
+  weighted,
   progress,
 } from "@/lib/engine";
 import type { Mission, World } from "@/types";
@@ -51,7 +53,8 @@ const Back = () => (
     <ArrowLeft size={16} /> Mission Control
   </Link>
 );
-export function WorldDetail({ id }: { id: string }) {
+export function WorldDetail({ id: routeId }: { id: string }) {
+  const id = routeId === "financement" ? "vanier" : routeId;
   const { state, update } = useStudio();
   const w = state.worlds.find((w) => w.id === id);
   if (id === "final") return <FinalDetail />;
@@ -126,51 +129,105 @@ export function WorldDetail({ id }: { id: string }) {
       <div className="mission-map">
         {ms.map((m, i) => {
           return (
-            <Link
-              href={`/mission/${m.id}`}
-              className={`map-item ${missionClosed(m) ? "lifecycle-closed" : ""}`}
-              key={m.id}
-            >
-              <span
-                className={`map-node ${complete(m) ? "node-complete" : ""}`}
-              >
-                {complete(m) ? (
-                  <Check size={20} />
-                ) : (
-                  String(i + 1).padStart(2, "0")
-                )}
-              </span>
-              <div>
-                <div className="eyebrow">
-                  {m.id.includes("-") ? "PERSONNALISÉE" : m.id} ·{" "}
-                  {missionStatus(m, state)} {m.isBoss && " · BOSS"}
+            <Fragment key={m.id}>
+              {m.vanierFunding && !ms[i - 1]?.vanierFunding && (
+                <div>
+                  <h2 id="financement-vanier">Financement Vanier</h2>
+                  <p>
+                    Progression :{" "}
+                    {state.archivedVanierFunding?.status === "completed"
+                      ? 100
+                      : (state.archivedVanierFunding?.manualProgress ??
+                        weighted(
+                          state.missions.filter(
+                            (item) => item.vanierFunding && !item.archived,
+                          ),
+                        ))}{" "}
+                    %
+                  </p>
                 </div>
-                <h3>{m.title}</h3>
-                <p>
-                  {m.tasks.filter((t) => t.completed).length}/{m.tasks.length}{" "}
-                  actions · {m.xpReward} XP bonus
-                </p>
-                {m.workState && !missionClosed(m) && (
+              )}
+              <Link
+                href={`/mission/${m.id}`}
+                className={`map-item ${missionClosed(m) ? "lifecycle-closed" : ""}`}
+                key={m.id}
+              >
+                <span
+                  className={`map-node ${complete(m) ? "node-complete" : ""}`}
+                >
+                  {complete(m) ? (
+                    <Check size={20} />
+                  ) : (
+                    String(i + 1).padStart(2, "0")
+                  )}
+                </span>
+                <div>
+                  <div className="eyebrow">
+                    {m.id.includes("-") ? "PERSONNALISÉE" : m.id} ·{" "}
+                    {missionStatus(m, state)} {m.isBoss && " · BOSS"}
+                  </div>
+                  <h3>{m.title}</h3>
                   <p>
-                    {m.waitingReason ||
-                      (m.workState === "waiting"
-                        ? "Réponse externe en attente"
-                        : "Mission en pause")}
+                    {m.tasks.filter((t) => t.completed).length}/{m.tasks.length}{" "}
+                    actions · {m.xpReward} XP bonus
                   </p>
-                )}
-                {m.dependencies.length > 0 && (
-                  <p>
-                    Séquence recommandée après {m.dependencies.join(", ")} ·
-                    disponible en parallèle
-                  </p>
-                )}
-                <Progress value={progress(m)} />
-              </div>
-              <ArrowRight size={20} />
-            </Link>
+                  {m.workState && !missionClosed(m) && (
+                    <p>
+                      {m.waitingReason ||
+                        (m.workState === "waiting"
+                          ? "Réponse externe en attente"
+                          : "Mission en pause")}
+                    </p>
+                  )}
+                  {m.dependencies.length > 0 && (
+                    <p>
+                      Séquence recommandée après {m.dependencies.join(", ")} ·
+                      disponible en parallèle
+                    </p>
+                  )}
+                  <Progress value={progress(m)} />
+                </div>
+                <ArrowRight size={20} />
+              </Link>
+            </Fragment>
           );
         })}
       </div>
+      {w.id === "vanier" && (
+        <section className="panel">
+          <h2>Suivi écoles</h2>
+          <p>
+            Document Games scolaires 2027 avancé, à finaliser. Après chaque
+            envoi confirmé, organiser une rencontre avec la direction et adapter
+            le modèle et les coûts.
+          </p>
+          <p>
+            Grille de coûts : intervenants, frais PürInstinct, matériel, AV, DJ,
+            food truck et contribution des écoles.
+          </p>
+          {schools.map((school, index) => (
+            <div key={school}>
+              <p>{school}</p>
+              <label>
+                Date d’envoi confirmée
+                <input
+                  type="date"
+                  value={state.schoolSentDates?.[index] ?? ""}
+                  onChange={(e) =>
+                    update((s) => ({
+                      ...s,
+                      schoolSentDates: {
+                        ...s.schoolSentDates,
+                        [index]: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          ))}
+        </section>
+      )}
       <ProjectEditor world={w} />
       <section
         className="panel"
@@ -201,9 +258,30 @@ export function WorldDetail({ id }: { id: string }) {
           en parallèle.
         </div>
       )}
-      {id === "financement" && (
+      {w.id === "vanier" && (
         <section className="panel funding">
-          <div className="eyebrow">L’IMPACT SOCIAL COMME MOTEUR</div>
+          <div className="eyebrow">Financement Vanier</div>
+          {state.archivedVanierFunding && (
+            <details>
+              <summary>Données de l’ancienne mission Financement</summary>
+              <p>
+                Statut conservé : {projectStatus(state.archivedVanierFunding)}
+              </p>
+              {state.archivedVanierFunding.manualProgress !== undefined && (
+                <p>
+                  Progression manuelle :{" "}
+                  {state.archivedVanierFunding.manualProgress} %
+                </p>
+              )}
+              <p>{state.archivedVanierFunding.notes}</p>
+              <p>{state.archivedVanierFunding.links}</p>
+              <LifecycleControls
+                item={state.archivedVanierFunding}
+                label="Ancien financement"
+                readOnly
+              />
+            </details>
+          )}
           <h2>
             {state.settings.funding.toLocaleString("fr-CA")} ${" "}
             <small>/ 40 000 $</small>
@@ -571,8 +649,11 @@ export function MissionDetail({ id }: { id: string }) {
               </Link>
             ))}
             {id === "V3" && (
-              <Link className="dependency" href="/world/financement">
-                <Zap size={14} /> WORLD 05 · FINANCEMENT
+              <Link
+                className="dependency"
+                href="/world/vanier#financement-vanier"
+              >
+                <Zap size={14} /> FINANCEMENT VANIER
               </Link>
             )}
             {dependents.length === 0 && id !== "V3" && (

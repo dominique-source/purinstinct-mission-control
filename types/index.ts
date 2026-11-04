@@ -1,3 +1,4 @@
+import type { DailyAction } from "@/lib/daily-plan";
 export type MediaBrief = {
   version: 1;
   milestoneIds: string[];
@@ -24,6 +25,7 @@ export type Task = Lifecycle & {
   custom?: boolean;
 };
 export type Mission = Lifecycle & {
+  vanierFunding?: boolean;
   owner?: string;
   planningState?: "in_progress" | "upcoming" | "someday" | "review_ready";
   id: string;
@@ -77,6 +79,10 @@ export type Settings = {
   funding: number;
 };
 export type State = {
+  dailyActions?: DailyAction[];
+  archivedVanierFunding?: World;
+  briefingMediaWorldId?: string;
+  schoolSentDates?: Record<string, string>;
   contentUpdates?: string[];
   version: 1;
   worlds: World[];

@@ -1,3 +1,5 @@
+import { applyBriefingUpdate, BRIEFING_UPDATE } from "@/data/briefing-update";
+import { validDailyActions, validDay } from "./daily-plan";
 import { createSeed } from "@/data/seed";
 import { applyNewSportDoc, NEW_SPORT_UPDATE } from "@/data/new-sport-doc";
 import type { MediaBrief, State } from "@/types";
@@ -64,6 +66,20 @@ export function isState(value: unknown): value is State {
   const s = value as State;
   if (
     s.version !== 1 ||
+    (s.briefingMediaWorldId !== undefined &&
+      typeof s.briefingMediaWorldId !== "string") ||
+    (s.schoolSentDates !== undefined &&
+      (!s.schoolSentDates ||
+        typeof s.schoolSentDates !== "object" ||
+        Array.isArray(s.schoolSentDates) ||
+        Object.values(s.schoolSentDates).some(
+          (date) => date !== "" && !validDay(date),
+        ))) ||
+    (s.archivedVanierFunding !== undefined &&
+      (!s.archivedVanierFunding ||
+        !validLifecycle(s.archivedVanierFunding) ||
+        !Array.isArray(s.archivedVanierFunding.unlockConditions))) ||
+    (s.dailyActions !== undefined && !validDailyActions(s.dailyActions)) ||
     (s.contentUpdates !== undefined &&
       (!Array.isArray(s.contentUpdates) ||
         s.contentUpdates.some((v) => typeof v !== "string"))) ||
@@ -179,7 +195,7 @@ export function isState(value: unknown): value is State {
 }
 type Snapshot = { state: State; ready: boolean; error: string };
 const serverSnapshot: Snapshot = {
-  state: applyNewSportDoc(createSeed()),
+  state: applyBriefingUpdate(applyNewSportDoc(createSeed())),
   ready: false,
   error: "",
 };
@@ -195,16 +211,16 @@ export function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!initialized) {
     initialized = true;
-    let state = applyNewSportDoc(createSeed()),
+    let state = applyBriefingUpdate(applyNewSportDoc(createSeed())),
       error = "";
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data: unknown = JSON.parse(raw);
         if (isState(data)) {
-          state = applyNewSportDoc(data);
+          state = applyBriefingUpdate(applyNewSportDoc(data));
           if (state !== data) {
-            const backupKey = `${STORAGE_KEY}-before-${NEW_SPORT_UPDATE}`;
+            const backupKey = `${STORAGE_KEY}-before-${data.contentUpdates?.includes(NEW_SPORT_UPDATE) ? BRIEFING_UPDATE : NEW_SPORT_UPDATE}`;
             if (!localStorage.getItem(backupKey))
               localStorage.setItem(backupKey, raw);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -225,7 +241,7 @@ export function subscribe(listener: () => void) {
   };
 }
 export function updateState(fn: (s: State) => State) {
-  const state = applyNewSportDoc(fn(snapshot.state));
+  const state = applyBriefingUpdate(applyNewSportDoc(fn(snapshot.state)));
   let error = "";
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
