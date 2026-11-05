@@ -59,7 +59,7 @@ export function validDailyActions(value: unknown): value is DailyAction[] {
         ),
     ) &&
     new Set(value.map((a) => a.id)).size === value.length &&
-    value.every((a) => value.filter((b) => b.date === a.date).length <= 4)
+    value.every((a) => value.filter((b) => b.date === a.date).length <= 5)
   );
 }
 
@@ -93,8 +93,8 @@ export function mergeDailyActions(
       );
     }
     const today = merged.filter((a) => a.date === action.date);
-    if (today.length >= 4)
-      throw new Error("Le plan contient déjà quatre actions pour cette date.");
+    if (today.length >= 5)
+      throw new Error("Le plan contient déjà cinq actions pour cette date.");
     merged.push({
       ...action,
       order: Math.max(0, ...today.map((a) => a.order)) + 1,
@@ -109,7 +109,7 @@ export function importDailyPlan(raw: string): DailyAction[] {
     !plan ||
     !validDay(plan.date) ||
     !Array.isArray(plan.actions) ||
-    plan.actions.length > 4 ||
+    plan.actions.length > 5 ||
     !plan.actions.every(
       (a: DailyAction) =>
         a &&
@@ -124,7 +124,7 @@ export function importDailyPlan(raw: string): DailyAction[] {
       plan.actions.length
   ) {
     throw new Error(
-      "JSON invalide. Fournissez une date et au plus quatre actions avec id et titre.",
+      "JSON invalide. Fournissez une date et au plus cinq actions avec id et titre.",
     );
   }
   return plan.actions.map((a: DailyAction, index: number) => ({
