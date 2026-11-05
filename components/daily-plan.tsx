@@ -85,8 +85,8 @@ export function DailyPlan() {
       const to = nextDay(action.date);
       const all = s.dailyActions ?? [];
       const destination = all.filter((a) => a.date === to);
-      if (destination.length >= 4)
-        throw new Error("Le lendemain contient déjà quatre actions.");
+      if (destination.length >= 5)
+        throw new Error("Le lendemain contient déjà cinq actions.");
       if (
         destination.some(
           (a) =>
@@ -305,7 +305,7 @@ export function DailyPlan() {
       {ready && date && !actions.length && (
         <p>Aucune action prévue pour cette journée.</p>
       )}
-      {ready && date && actions.length < 4 && !editing && (
+      {ready && date && actions.length < 5 && !editing && (
         <button
           className="button secondary"
           type="button"
@@ -406,7 +406,7 @@ export function DailyPlan() {
             <input
               type="number"
               min={1}
-              max={4}
+              max={5}
               required
               value={editing.order}
               onChange={(e) =>
