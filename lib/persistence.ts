@@ -1,4 +1,5 @@
 import { applyGamesCreationUpdate, GAMES_CREATION_UPDATE } from "@/data/games-creation-update";
+import { applyBriefing20261105Update, BRIEFING_20261105_UPDATE } from "@/data/briefing-2026-11-05";
 import { applyBriefingUpdate, BRIEFING_UPDATE } from "@/data/briefing-update";
 import { validDailyActions, validDay } from "./daily-plan";
 import { createSeed } from "@/data/seed";
@@ -196,7 +197,7 @@ export function isState(value: unknown): value is State {
 }
 type Snapshot = { state: State; ready: boolean; error: string };
 const serverSnapshot: Snapshot = {
-  state: applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed()))),
+  state: applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed())))),
   ready: false,
   error: "",
 };
@@ -212,16 +213,16 @@ export function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!initialized) {
     initialized = true;
-    let state = applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed()))),
+    let state = applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed())))),
       error = "";
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data: unknown = JSON.parse(raw);
         if (isState(data)) {
-          state = applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(data)));
+          state = applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(data))));
           if (state !== data) {
-            const backupKey = `${STORAGE_KEY}-before-${data.contentUpdates?.includes(BRIEFING_UPDATE) ? GAMES_CREATION_UPDATE : data.contentUpdates?.includes(NEW_SPORT_UPDATE) ? BRIEFING_UPDATE : NEW_SPORT_UPDATE}`;
+            const backupKey = `${STORAGE_KEY}-before-${data.contentUpdates?.includes(GAMES_CREATION_UPDATE) ? BRIEFING_20261105_UPDATE : data.contentUpdates?.includes(BRIEFING_UPDATE) ? GAMES_CREATION_UPDATE : data.contentUpdates?.includes(NEW_SPORT_UPDATE) ? BRIEFING_UPDATE : NEW_SPORT_UPDATE}`;
             if (!localStorage.getItem(backupKey))
               localStorage.setItem(backupKey, raw);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -242,7 +243,7 @@ export function subscribe(listener: () => void) {
   };
 }
 export function updateState(fn: (s: State) => State) {
-  const state = applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(fn(snapshot.state))));
+  const state = applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(fn(snapshot.state)))));
   let error = "";
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
