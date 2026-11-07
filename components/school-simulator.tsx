@@ -149,7 +149,7 @@ function SchoolSimulatorEditor() {
         <header className="sim-hero">
           <div>
             <p className="sim-eyebrow">
-              <ShieldCheck size={15} /> FINANCES / ESPACE LOCAL DE VALIDATION
+              <ShieldCheck size={15} /> FINANCES / ESPACE PRIVÉ
             </p>
             <h1>
               SIMULATEUR <span>ÉCOLES</span>

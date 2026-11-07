@@ -114,3 +114,25 @@ test("server gate denies anonymous hosted access even with local switch enabled"
     true,
   );
 });
+
+test("hosted simulator requires Vercel and explicit protected deployment configuration", () => {
+  assert.equal(
+    schoolSimulatorAllowed({
+      NODE_ENV: "production",
+      SCHOOL_SIMULATOR_ACCESS: "vercel-authentication",
+    }),
+    false,
+  );
+  assert.equal(
+    schoolSimulatorAllowed({ NODE_ENV: "production", VERCEL: "1" }),
+    false,
+  );
+  assert.equal(
+    schoolSimulatorAllowed({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      SCHOOL_SIMULATOR_ACCESS: "vercel-authentication",
+    }),
+    true,
+  );
+});

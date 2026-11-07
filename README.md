@@ -160,8 +160,8 @@ vendu à l’école. Le nombre d’élèves sert uniquement à la capacité.
 Le dépôt n’a pas de fournisseur d’authentification configuré. Le repli sécurisé
 prévu au cahier des charges est donc actif : les deux routes `/finances` et
 `/finances/simulateur-ecoles` refusent l’accès côté serveur (404) par défaut.
-**Tous les builds de production et toutes les previews Vercel restent bloqués**,
-même avec le commutateur local. Aucune API financière n’est ajoutée.
+Par défaut les builds restent bloqués. L’activation hébergée approuvée est
+décrite plus bas et exige Vercel Authentication pour tous les déploiements. Aucune API financière n’est ajoutée.
 
 Pour examiner le module sur votre ordinateur :
 
@@ -177,10 +177,8 @@ sur le réseau. Aucun secret n’est nécessaire et aucune variable `NEXT_PUBLIC
 ne contrôle l’accès. Les scénarios exemples sont publics dans le code : ne jamais
 y inscrire des données réelles de clients.
 
-Avant toute activation hébergée, une livraison distincte devra intégrer un
-fournisseur d’authentification de production avec session vérifiée côté serveur
-et liste d’utilisateurs autorisés, protéger chaque route et future API, vérifier
-la protection Vercel des previews, puis obtenir l’approbation de déploiement.
+L’activation hébergée approuvée utilise Vercel Authentication, qui vérifie
+l’identité et les autorisations avant toute requête à l’application.
 Le commutateur local ne permet pas d’activer un environnement hébergé.
 
 ### Brouillons et modèle
@@ -228,3 +226,22 @@ marges, prix libres et nuls, valeurs invalides, capacité, effectifs, horaire,
 validation des brouillons et fermeture de la porte d’accès en environnement
 hébergé. Les anciens tests de migration et de limite du briefing ont été alignés
 sur les projets et la limite de cinq actions déjà présents dans la branche.
+
+### Activation hébergée approuvée
+
+Mission Control est désormais destiné à être privé dans son ensemble. Activer
+**Vercel Authentication → All Deployments** avant toute activation du simulateur.
+Cela protège aussi les domaines de production, les previews et leurs ressources.
+Vercel vérifie la connexion et les droits d’accès avant de transmettre la requête
+au serveur Next.js. Les utilisateurs doivent être autorisés dans l’équipe Vercel.
+
+La variable serveur `SCHOOL_SIMULATOR_ACCESS=vercel-authentication` active le module
+uniquement sur Vercel (`VERCEL=1`). Elle est configurée en production après
+vérification de la protection globale. Sans elle, les routes financières restent
+fermées. Ne jamais désactiver la protection globale tant que cette variable est
+active. Les liens de partage et secrets de contournement de Vercel accordent
+aussi accès au projet et doivent être traités comme des moyens d’accès privés.
+
+Cette configuration hébergée remplace le blocage systématique des builds décrit
+dans la section de préparation locale ci-dessus. Les brouillons restent propres
+à chaque navigateur et appareil.

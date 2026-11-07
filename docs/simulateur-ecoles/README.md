@@ -1,5 +1,9 @@
 # Validation du simulateur Écoles
 
+Activation hébergée approuvée après la validation initiale ci-dessous.
+Vercel Authentication couvre tous les déploiements et domaines.
+La variable serveur d’activation est limitée à la production. 32 tests passent.
+
 Scénario exemple uniquement, sans données financières de clients.
 
 - 31 tests passent, dont les cinq tests du modèle financier et de la porte serveur.
@@ -16,8 +20,7 @@ Scénario exemple uniquement, sans données financières de clients.
   La porte applicative refuse aussi toutes les previews Vercel. Aucun accès
   hébergé au simulateur n’est activé.
 
-L’authentification hébergée reste un préalable à une future activation en ligne.
-Le présent module est disponible en validation locale seulement. Les brouillons
+L’accès hébergé est désormais protégé par Vercel Authentication. Les brouillons
 sont propres à l’appareil, sans synchronisation entre onglets.
 
 Les captures montrent l’exemple de référence après réinitialisation confirmée.
