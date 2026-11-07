@@ -1,3 +1,4 @@
+import { schoolSimulatorAllowed } from "@/lib/school-access";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./campaign.css";
@@ -11,7 +12,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <body>
-        <StudioProvider>{children}</StudioProvider>
+        <StudioProvider
+          simulatorAvailable={schoolSimulatorAllowed(process.env)}
+        >
+          {children}
+        </StudioProvider>
       </body>
     </html>
   );

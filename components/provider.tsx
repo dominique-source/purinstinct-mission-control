@@ -18,6 +18,7 @@ import {
   updateState,
 } from "@/lib/persistence";
 type Store = {
+  simulatorAvailable: boolean;
   state: State;
   update: (fn: (s: State) => State) => void;
   patchMission: (id: string, patch: Partial<Mission>) => void;
@@ -26,7 +27,13 @@ type Store = {
   error: string;
 };
 const Context = createContext<Store | null>(null);
-export function StudioProvider({ children }: { children: ReactNode }) {
+export function StudioProvider({
+  children,
+  simulatorAvailable = false,
+}: {
+  children: ReactNode;
+  simulatorAvailable?: boolean;
+}) {
   const { state, ready, error } = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -78,6 +85,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider
       value={{
+        simulatorAvailable,
         state,
         update: updateState,
         patchMission,

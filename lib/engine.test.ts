@@ -201,7 +201,10 @@ test("loading a legacy save adds the requested brief once, preserves originals a
     migrated.missions.filter((m) => !m.vanierFunding).slice(0, 18),
     JSON.parse(payload).missions.slice(0, 18),
   );
-  assert.equal(migrated.worlds.length, s.worlds.length + 1);
+  assert.deepEqual(
+    migrated.worlds.filter(w => !s.worlds.some(original => original.id === w.id)).map(w => w.id).sort(),
+    ["creation-jeux-games", "creation-produits-games", "funding-750k", "new-sport-doc"],
+  );
   const { NEW_SPORT_UPDATE } = await import("../data/new-sport-doc");
   assert.equal(
     storage.get(`purinstinct-mission-control-v1-before-${NEW_SPORT_UPDATE}`),
@@ -883,7 +886,7 @@ test("daily plan import is bounded and idempotent, retaining checked actions and
       mergeDailyActions(
         {
           ...original,
-          dailyActions: Array.from({ length: 4 }, (_, i) => ({
+          dailyActions: Array.from({ length: 5 }, (_, i) => ({
             ...saved,
             id: String(i),
             title: String(i),
@@ -891,7 +894,7 @@ test("daily plan import is bounded and idempotent, retaining checked actions and
         },
         imported,
       ),
-    /quatre/,
+    /cinq/,
   );
   assert.equal(torontoDay(new Date("2026-11-05T02:00:00Z")), "2026-11-04");
   assert.equal(nextDay("2026-12-31"), "2027-01-01");
