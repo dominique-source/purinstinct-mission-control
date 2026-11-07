@@ -16,13 +16,16 @@ import { AnimatedNumber } from "./animated-number";
 import { projectGroups } from "@/lib/project-navigation";
 import { globalProgress, level, totalXp } from "@/lib/engine";
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { state } = useStudio();
+  const { state, simulatorAvailable } = useStudio();
   const path = usePathname();
   const xp = totalXp(state);
   const lv = level(xp);
   const links = [
     { href: "/", label: "Mission Control", icon: LayoutDashboard },
     { href: "/world/vanier", label: "Les missions", icon: Globe2 },
+    ...(simulatorAvailable
+      ? [{ href: "/finances", label: "Finances", icon: ChartNoAxesCombined }]
+      : []),
     { href: "/archive", label: "Missions terminées", icon: Archive },
     { href: "/settings", label: "Paramètres", icon: Settings2 },
   ];
@@ -124,7 +127,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </span>
         <span>Le sport à l’état pur.</span>
       </footer>
-      <nav className="mobile-command-nav" aria-label="Navigation mobile">
+      <nav
+        className="mobile-command-nav"
+        aria-label="Navigation mobile"
+        style={{
+          gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))`,
+        }}
+      >
         {links.map(({ href, label, icon: Icon }) => (
           <Link
             href={href}

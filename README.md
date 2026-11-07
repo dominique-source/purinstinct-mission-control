@@ -145,3 +145,86 @@ La page associée au brief structuré suit l’ordre demandé : hero, Next Actio
 La synthèse fournie du casting contient uniquement les totaux S/A/B/C/D (13/7/26/25/15, soit 86), leurs significations et le lien du Casting Master. Aucun répertoire de 86 personnes n’est dupliqué et aucune synchronisation Google Sheets n’est créée. La shortlist officielle est initialement vide. Les totaux, la shortlist, les liens et statuts des documents ainsi que les notes sont éditables. Les ressources conservent les rôles et les dix principes d’entente fournis, dont la distinction entre la propriété de PürInstinct et le nouveau sport / format envisagé à 50/50. Les documents de concepts n’ont pas de lien inventé : ils sont à ajouter lorsqu’ils sont disponibles.
 
 Validation : 24 tests, lint, TypeScript et compilation. Les tests couvrent la mise à jour additive, l’absence de doublon, la réutilisation d’un identifiant dynamique et d’un milestone existant, les notes/tâches/XP préservés, le backup et la réouverture sans réapplication du contenu. Vérification navigateur des huit milestones, du lien exact du Sheet, du casting prêt pour révision, de l’historique, de la shortlist et des notes après rafraîchissement, de l’édition d’un milestone et du retour vers le brief. Affichage iPhone à 390 px sans débordement horizontal. Les essais utilisent une origine locale isolée.
+
+## Simulateur financier Écoles (préparation privée)
+
+Navigation locale : **Mission Control → Finances → Simulateur Écoles**.
+Le module utilise les images, la typographie et le Shell existants. Six contrôles
+principaux, résultat financier et comparaison de trois années indépendantes.
+Les montants sont des **hypothèses illustratives en CAD**, jamais des soumissions
+confirmées. Coût initial des intervenants : **100 $ CA/heure**, distinct du prix
+vendu à l’école. Le nombre d’élèves sert uniquement à la capacité.
+
+### Accès et validation locale
+
+Le dépôt n’a pas de fournisseur d’authentification configuré. Le repli sécurisé
+prévu au cahier des charges est donc actif : les deux routes `/finances` et
+`/finances/simulateur-ecoles` refusent l’accès côté serveur (404) par défaut.
+**Tous les builds de production et toutes les previews Vercel restent bloqués**,
+même avec le commutateur local. Aucune API financière n’est ajoutée.
+
+Pour examiner le module sur votre ordinateur :
+
+```sh
+npm ci
+SCHOOL_SIMULATOR_LOCAL=1 npm run dev -- --hostname 127.0.0.1 --port 3010
+# ouvrir http://127.0.0.1:3010/finances
+```
+
+Cette activation est réservée au développement local sur l’interface de boucle
+locale. Elle ne constitue pas une authentification. Ne pas exposer ce serveur
+sur le réseau. Aucun secret n’est nécessaire et aucune variable `NEXT_PUBLIC_`
+ne contrôle l’accès. Les scénarios exemples sont publics dans le code : ne jamais
+y inscrire des données réelles de clients.
+
+Avant toute activation hébergée, une livraison distincte devra intégrer un
+fournisseur d’authentification de production avec session vérifiée côté serveur
+et liste d’utilisateurs autorisés, protéger chaque route et future API, vérifier
+la protection Vercel des previews, puis obtenir l’approbation de déploiement.
+Le commutateur local ne permet pas d’activer un environnement hébergé.
+
+### Brouillons et modèle
+
+Le brouillon est spécifique à l’appareil, dans
+`purinstinct-school-simulator-v1`. Le simulateur n’écrit jamais dans la clé des
+missions. Les données invalides ou d’une version inconnue sont conservées sans
+écrasement ; une réinitialisation exige une confirmation. Aucun transfert externe
+ni collecte de données d’élèves. Éviter les brouillons contradictoires dans
+plusieurs onglets : l’enregistrement le plus récent gagne.
+
+Les exemples reproduisent les neuf postes de SCENARIOS.csv :
+
+| Année | Coûts | Prix illustratif | Marge brute |
+| --- | --- | --- | --- |
+| 1 | 9 450 $ | 14 500 $ | 5 050 $ |
+| 2 | 6 600 $ | 10 500 $ | 3 900 $ |
+| 3 | 5 350 $ | 8 500 $ | 3 150 $ |
+
+Prix calculé = coûts / (1 − marge cible). La saisie libre du prix recalcule la
+marge réelle. Les cliniques et la formation utilisent des heures-intervenants
+cumulées. Le détail des coûts et l’horaire se trouvent dans le panneau avancé.
+La main-d’œuvre d’installation peut recouper les heures de l’équipe : avertissement
+explicite. La conférence a un coût interne initial de 1 000 $ et une valeur
+catalogue indicative distincte de 2 000 $. Renouvellement généralement en année 4.
+
+L’exemple fournit 236 places simultanées (118 actives + 118 en attente), donc
+9 vagues minimum pour 2 000 élèves. L’horaire initial de 45 minutes par vague et
+5 minutes de transition est une hypothèse modifiable, à valider sur le terrain.
+Le calcul mécanique donne 4 intervenants (17 postes − 15 enseignants + 2
+coordonnateurs), tandis que l’exemple en utilise 5. L’écart est signalé et conservé.
+Les années 2 et 3 ne déclenchent aucune réduction automatique des effectifs.
+
+### Vérifications
+
+```sh
+npm test
+npm run lint
+npm run build
+npm run typecheck
+```
+
+Les fonctions pures couvrent les trois exemples, chaque poste de coût, les
+marges, prix libres et nuls, valeurs invalides, capacité, effectifs, horaire,
+validation des brouillons et fermeture de la porte d’accès en environnement
+hébergé. Les anciens tests de migration et de limite du briefing ont été alignés
+sur les projets et la limite de cinq actions déjà présents dans la branche.
