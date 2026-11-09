@@ -1,3 +1,4 @@
+import { applyRfidReadinessUpdate, RFID_READINESS_UPDATE } from "@/data/rfid-readiness-2026-11-09";
 import { applySchoolLettersUpdate, SCHOOL_LETTERS_UPDATE } from "@/data/school-letters-of-intent";
 import { applyBriefing20261106Update, BRIEFING_20261106_UPDATE } from "@/data/briefing-2026-11-06";
 import { applyGamesCreationUpdate, GAMES_CREATION_UPDATE } from "@/data/games-creation-update";
@@ -199,7 +200,7 @@ export function isState(value: unknown): value is State {
 }
 type Snapshot = { state: State; ready: boolean; error: string };
 const serverSnapshot: Snapshot = {
-  state: applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed())))))),
+  state: applyRfidReadinessUpdate(applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed()))))))),
   ready: false,
   error: "",
 };
@@ -215,16 +216,16 @@ export function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!initialized) {
     initialized = true;
-    let state = applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed())))))),
+    let state = applyRfidReadinessUpdate(applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(createSeed()))))))),
       error = "";
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data: unknown = JSON.parse(raw);
         if (isState(data)) {
-          state = applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(data))))));
+          state = applyRfidReadinessUpdate(applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(data)))))));
           if (state !== data) {
-            const backupKey = `${STORAGE_KEY}-before-${data.contentUpdates?.includes(BRIEFING_20261106_UPDATE) ? SCHOOL_LETTERS_UPDATE : data.contentUpdates?.includes(BRIEFING_20261105_UPDATE) ? BRIEFING_20261106_UPDATE : data.contentUpdates?.includes(GAMES_CREATION_UPDATE) ? BRIEFING_20261105_UPDATE : data.contentUpdates?.includes(BRIEFING_UPDATE) ? GAMES_CREATION_UPDATE : data.contentUpdates?.includes(NEW_SPORT_UPDATE) ? BRIEFING_UPDATE : NEW_SPORT_UPDATE}`;
+            const backupKey = `${STORAGE_KEY}-before-${data.contentUpdates?.includes(SCHOOL_LETTERS_UPDATE) ? RFID_READINESS_UPDATE : data.contentUpdates?.includes(BRIEFING_20261106_UPDATE) ? SCHOOL_LETTERS_UPDATE : data.contentUpdates?.includes(BRIEFING_20261105_UPDATE) ? BRIEFING_20261106_UPDATE : data.contentUpdates?.includes(GAMES_CREATION_UPDATE) ? BRIEFING_20261105_UPDATE : data.contentUpdates?.includes(BRIEFING_UPDATE) ? GAMES_CREATION_UPDATE : data.contentUpdates?.includes(NEW_SPORT_UPDATE) ? BRIEFING_UPDATE : NEW_SPORT_UPDATE}`;
             if (!localStorage.getItem(backupKey))
               localStorage.setItem(backupKey, raw);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -245,7 +246,7 @@ export function subscribe(listener: () => void) {
   };
 }
 export function updateState(fn: (s: State) => State) {
-  const state = applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(fn(snapshot.state)))))));
+  const state = applyRfidReadinessUpdate(applySchoolLettersUpdate(applyBriefing20261106Update(applyBriefing20261105Update(applyGamesCreationUpdate(applyBriefingUpdate(applyNewSportDoc(fn(snapshot.state))))))));
   let error = "";
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
