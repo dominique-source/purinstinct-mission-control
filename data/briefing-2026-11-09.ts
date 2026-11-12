@@ -25,7 +25,7 @@ const priorities: Omit<DailyAction, "order">[] = [
   },
 ];
 
-export function applyBriefing20261109ThreeUpdate(state: State): State {
+function applyNovember9Priorities(state: State): State {
   if (state.contentUpdates?.includes(BRIEFING_20261109_THREE_UPDATE)) return state;
   const dailyActions = [...(state.dailyActions ?? [])];
   for (const action of priorities) {
@@ -43,4 +43,26 @@ export function applyBriefing20261109ThreeUpdate(state: State): State {
     dailyActions,
     contentUpdates: [...(state.contentUpdates ?? []), BRIEFING_20261109_THREE_UPDATE],
   };
+}
+
+const NOVEMBER_12_UPDATE = "briefing-2026-11-12-school-letter-v1";
+
+export function applyBriefing20261109ThreeUpdate(state: State): State {
+  const previous = applyNovember9Priorities(state);
+  if (previous.contentUpdates?.includes(NOVEMBER_12_UPDATE)) return previous;
+  const dailyActions = [...(previous.dailyActions ?? [])];
+  const date = "2026-11-12";
+  const id = "briefing-20261112-school-letter-template";
+  const title = "Préparer le modèle de lettre d’intention pour les écoles";
+  const sameDay = dailyActions.filter((a) => a.date === date);
+  if (!previous.worlds.some((w) => w.id === "vanier")) return previous;
+  if (!dailyActions.some((a) => a.id === id || (a.date === date && a.title.trim().toLocaleLowerCase("fr") === title.toLocaleLowerCase("fr")))) {
+    if (sameDay.length >= 5) return previous;
+    dailyActions.push({
+      id, date, title, worldId: "vanier", status: "todo", history: [],
+      order: Math.min(0, ...sameDay.map((a) => a.order)) - 1,
+      detail: "Après le briefing, rédiger ensemble un modèle d’une page facile à remplir et signer, prêt pour la rencontre avec Vanier le 13 novembre. Indiquer l’école, le nombre d’élèves, le tarif pilote de 10 $ par élève (ex. 400 élèves = 4 000 $), les frais de déplacement applicables et une intention de participation conditionnelle à l’obtention du financement nécessaire, notamment les subventions gouvernementales. Prévoir signature de la direction et date. Ne pas rédiger ni envoyer la lettre pendant le briefing.",
+    });
+  }
+  return { ...previous, dailyActions, contentUpdates: [...(previous.contentUpdates ?? []), NOVEMBER_12_UPDATE] };
 }
