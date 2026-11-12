@@ -19,7 +19,7 @@ const tasks = [
   ["blockers", "Lister ce qui manque, classer les blocages P0/P1/P2 et valider la préparation du test de l'Horizon le 17 novembre"],
 ] as const;
 
-export function applyRfidReadinessUpdate(state: State): State {
+function applyOriginalRfidReadinessUpdate(state: State): State {
   if (state.contentUpdates?.includes(RFID_READINESS_UPDATE)) return state;
   const missions = [...state.missions];
   if (state.worlds.some((w) => w.id === worldId) && !missions.some((m) => m.id === missionId)) {
@@ -67,4 +67,26 @@ export function applyRfidReadinessUpdate(state: State): State {
     dailyActions,
     contentUpdates: [...(state.contentUpdates ?? []), RFID_READINESS_UPDATE],
   };
+}
+
+const RFID_TEST_NOV12 = "rfid-test-2026-11-12-v1";
+export function applyRfidReadinessUpdate(state: State): State {
+  const previous = applyOriginalRfidReadinessUpdate(state);
+  if (previous.contentUpdates?.includes(RFID_TEST_NOV12)) return previous;
+  if (!previous.worlds.some((w) => w.id === worldId)) return previous;
+  const date = "2026-11-12";
+  const id = "briefing-20261112-rfid-physical-test";
+  const title = "Tester réellement les bracelets RFID";
+  const dailyActions = [...(previous.dailyActions ?? [])];
+  const existing = dailyActions.find((a) => a.id === id || (a.date === date && a.title.trim().toLocaleLowerCase("fr") === title.toLocaleLowerCase("fr")));
+  if (!existing) {
+    const sameDay = dailyActions.filter((a) => a.date === date);
+    if (sameDay.length >= 5) return previous;
+    dailyActions.push({
+      id, date, title, worldId, status: "todo", history: [],
+      order: Math.max(0, ...sameDay.map((a) => a.order)) + 1,
+      detail: "Effectuer aujourd’hui le test physique des bracelets et lecteurs existants : lire et associer un bracelet à un participant, rescanner, saisir un score, vérifier sauvegarde et classement. Vérifier Android, mode manuel et affichage TV si possible. Consigner les résultats et blocages avant le test du 17 novembre à L’Horizon. Ne pas déclarer le test réussi avant validation réelle.",
+    });
+  }
+  return { ...previous, dailyActions, contentUpdates: [...(previous.contentUpdates ?? []), RFID_TEST_NOV12] };
 }
