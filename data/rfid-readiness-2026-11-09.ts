@@ -70,7 +70,7 @@ function applyOriginalRfidReadinessUpdate(state: State): State {
 }
 
 const RFID_TEST_NOV12 = "rfid-test-2026-11-12-v1";
-export function applyRfidReadinessUpdate(state: State): State {
+function applyPriorRfidReadinessUpdate(state: State): State {
   const previous = applyOriginalRfidReadinessUpdate(state);
   if (previous.contentUpdates?.includes(RFID_TEST_NOV12)) return previous;
   if (!previous.worlds.some((w) => w.id === worldId)) return previous;
@@ -89,4 +89,20 @@ export function applyRfidReadinessUpdate(state: State): State {
     });
   }
   return { ...previous, dailyActions, contentUpdates: [...(previous.contentUpdates ?? []), RFID_TEST_NOV12] };
+}
+
+export function applyRfidReadinessUpdate(state: State): State {
+  const previous = applyPriorRfidReadinessUpdate(state);
+  const date = "2026-11-16";
+  const id = "briefing-20261116-android-nfc-purchase";
+  const update = "android-nfc-purchase-2026-11-16-v1";
+  if (previous.contentUpdates?.includes(update)) return previous;
+  if (!previous.worlds.some(w => w.id === worldId)) return previous;
+  const dailyActions = [...(previous.dailyActions ?? [])];
+  const sameDay = dailyActions.filter(a => a.date === date);
+  if (!dailyActions.some(a => a.id === id)) {
+    if (sameDay.length >= 5) return previous;
+    dailyActions.push({ id, date, worldId, title: "Trouver et acheter un Android compatible RFID/NFC", detail: "Budget maximum 300 $ CA. Vérifier le stock pour ramassage aujourd’hui au Best Buy Place Laurier, Québec. Confirmer la compatibilité du bracelet réel avec le NFC et l’application PürInstinct avant achat; comparer au téléphone Android existant. Préparer le test à L’Horizon du 17 novembre. Aucun achat ni stock confirmé à ce stade.", status: "todo", order: Math.max(0, ...sameDay.map(a => a.order)) + 1, history: [] });
+  }
+  return { ...previous, dailyActions, contentUpdates: [...(previous.contentUpdates ?? []), update] };
 }
